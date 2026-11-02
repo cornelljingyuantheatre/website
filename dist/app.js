@@ -8,9 +8,221 @@ main.querySelector('[data-today]').onclick=()=>{selectSeason('Fall 2026');center
 wheel.addEventListener('scroll',()=>{clearTimeout(settleTimer);settleTimer=setTimeout(()=>{if(!wheel.isConnected)return;const middle=wheel.getBoundingClientRect().top+wheel.clientHeight/2;const closest=items.reduce((best,item)=>Math.abs(item.getBoundingClientRect().top+item.offsetHeight/2-middle)<Math.abs(best.getBoundingClientRect().top+best.offsetHeight/2-middle)?item:best);if(closest.dataset.season!==season)selectSeason(closest.dataset.season)},120)},{passive:true});
 wheel.addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();let index=items.findIndex(b=>b.dataset.season===season);index=e.key==='Home'?0:e.key==='End'?items.length-1:Math.max(0,Math.min(items.length-1,index+(e.key==='ArrowDown'?1:-1)));selectSeason(items[index].dataset.season);items[index].focus({preventScroll:true});centerItem(items[index])});
 requestAnimationFrame(()=>{if(wheel.isConnected)centerItem(items.find(b=>b.dataset.season===season),false)});bindTickets()}
-function member(role){return `<article class="member"><div class="portrait" aria-label="Headshot placeholder">境缘</div><h3>${role}</h3><p>Name to be announced</p></article>`}
-const boardGroups=[{id:'Publicity',label:'Publicity 宣传部',count:8},{id:'Photography',label:'Photography 摄影部',count:8},{id:'Treasure',label:'Treasure 财务部',count:3},{id:'Social',label:'Social 内联部',count:8},{id:'External',label:'External 外联部',count:3},{id:'Graduates',label:'Graduates 毕业生',count:16}];
-function departmentMember(role){return `<article class="member"><div class="portrait" aria-label="Headshot placeholder"></div><h3>${role}</h3><p>Name to be announced</p></article>`}
-function departmentRows(group){let rows=[];if(group.id==='Graduates'){for(let i=0;i<4;i++)rows.push(`<div class="department-row">${Array.from({length:4},()=>departmentMember('Alumni')).join('')}</div>`)}else{rows.push(`<div class="department-row leader-row">${departmentMember(group.id+' Lead')}</div>`);for(let remaining=group.count-1;remaining>0;remaining-=4){rows.push(`<div class="department-row">${Array.from({length:Math.min(4,remaining)},()=>departmentMember('Team Member')).join('')}</div>`)}}return rows.join('')}
-function eboard(){let group=boardGroups.find(g=>g.id===department)||boardGroups[0];main.innerHTML=`<section class="page-top shows-page-top eboard-page-top"><div><h1>Eboard <span lang="zh">主席团</span></h1></div></section><section class="board"><h2>Our executive board</h2><div class="members">${['President 主席','President 主席','President 主席','Secretary 秘书','Artistic Director 艺术总监','Technical Director 技术总监'].map(member).join('')}</div><div class="departments" aria-label="Departments">${boardGroups.map(g=>`<button data-dept="${g.id}" class="${g.id===department?'active':''}" aria-pressed="${g.id===department}">${g.label}</button>`).join('')}</div><section class="department-members" aria-label="${group.label}">${departmentRows(group)}</section></section>`;main.querySelectorAll('[data-dept]').forEach(b=>b.onclick=()=>{department=b.dataset.dept;eboard();main.querySelector(`[data-dept="${department}"]`).focus({preventScroll:true})})}
+const boardPeople={
+  "Hedy": {
+    "name": "Hedy",
+    "chineseName": "宋一瑾",
+    "photo": "images/eboard/hedy.jpg"
+  },
+  "Mary": {
+    "name": "Mary",
+    "chineseName": "杨舒婷",
+    "photo": "images/eboard/mary.jpg"
+  },
+  "Bill": {
+    "name": "Bill",
+    "chineseName": "许比尔",
+    "photo": "images/eboard/bill.jpg"
+  },
+  "Wenjia": {
+    "name": "Wenjia",
+    "chineseName": "孙文嘉",
+    "photo": "images/eboard/wenjia.jpg"
+  },
+  "Emily": {
+    "name": "Emily",
+    "chineseName": "马君竹",
+    "photo": "images/eboard/emily.jpg"
+  },
+  "Hemchee": {
+    "name": "Hemchee",
+    "chineseName": "钟晗齐",
+    "photo": "images/eboard/hemchee.jpg"
+  },
+  "Susan": {
+    "name": "Susan",
+    "chineseName": "徐梓欣",
+    "photo": "images/eboard/susan.jpg"
+  },
+  "Mike": {
+    "name": "Mike",
+    "chineseName": "张皓清",
+    "photo": "images/eboard/mike.jpg"
+  },
+  "Rose": {
+    "name": "Rose",
+    "chineseName": "余文琼",
+    "photo": null
+  },
+  "Yanni": {
+    "name": "Yanni",
+    "chineseName": "仲彦霓",
+    "photo": "images/eboard/yanni.jpg"
+  },
+  "Sophie": {
+    "name": "Sophie",
+    "chineseName": "曾子芩",
+    "photo": "images/eboard/sophie.jpg"
+  },
+  "Kitty": {
+    "name": "Kitty",
+    "chineseName": "章安涛",
+    "photo": "images/eboard/kitty.jpg"
+  },
+  "Darcie": {
+    "name": "Darcie",
+    "chineseName": "夏雨琦",
+    "photo": "images/eboard/darcie.jpg"
+  },
+  "Anny": {
+    "name": "Anny",
+    "chineseName": "王晨怿",
+    "photo": "images/eboard/anny.jpg"
+  },
+  "Karrie": {
+    "name": "Karrie",
+    "chineseName": "符嘉蔚",
+    "photo": "images/eboard/karrie.jpg"
+  },
+  "Ricky": {
+    "name": "Ricky",
+    "chineseName": "单炜宁",
+    "photo": "images/eboard/ricky.jpg"
+  },
+  "Jack": {
+    "name": "Jack",
+    "chineseName": "管昕",
+    "photo": "images/eboard/jack.jpg"
+  },
+  "Cynthia": {
+    "name": "Cynthia",
+    "chineseName": "白宇馨",
+    "photo": "images/eboard/cynthia.jpg"
+  },
+  "Luna": {
+    "name": "Luna",
+    "chineseName": "刘明萱",
+    "photo": "images/eboard/luna.jpg"
+  },
+  "Celine": {
+    "name": "Celine",
+    "chineseName": "宋语涵",
+    "photo": "images/eboard/celine.jpg"
+  },
+  "Zemo": {
+    "name": "Zemo",
+    "chineseName": "李子慕",
+    "photo": "images/eboard/zemo.jpg"
+  },
+  "Stephanie": {
+    "name": "Stephanie",
+    "chineseName": "秦睿含",
+    "photo": "images/eboard/stephanie.jpg"
+  },
+  "Rosita": {
+    "name": "Rosita",
+    "chineseName": "季曾逸",
+    "photo": "images/eboard/rosita.jpg"
+  },
+  "Lillian": {
+    "name": "Lillian",
+    "chineseName": "陈莉莲",
+    "photo": "images/eboard/lillian.jpg"
+  },
+  "Ye": {
+    "name": "Ye",
+    "chineseName": "林烨",
+    "photo": "images/eboard/ye.jpg"
+  },
+  "Carnegie": {
+    "name": "Carnegie",
+    "chineseName": "冯启翔",
+    "photo": "images/eboard/carnegie.jpg"
+  },
+  "Leo": {
+    "name": "Leo",
+    "chineseName": "李昱泽",
+    "photo": "images/eboard/leo.jpg"
+  },
+  "Cliff": {
+    "name": "Cliff",
+    "chineseName": "张均霆",
+    "photo": "images/eboard/cliff.jpg"
+  },
+  "Yan": {
+    "name": "Yan",
+    "chineseName": "吴彦",
+    "photo": "images/eboard/yan.jpg"
+  },
+  "Bowen": {
+    "name": "Bowen",
+    "chineseName": "余博文",
+    "photo": "images/eboard/bowen.jpg"
+  },
+  "Wei": {
+    "name": "Wei",
+    "chineseName": "任晨微",
+    "photo": "images/eboard/wei.jpg"
+  },
+  "Steven": {
+    "name": "Steven",
+    "chineseName": "杨粟元",
+    "photo": "images/eboard/steven.jpg"
+  },
+  "Jay": {
+    "name": "Jay",
+    "chineseName": "倪国杰",
+    "photo": "images/eboard/jay.jpg"
+  },
+  "David": {
+    "name": "David",
+    "chineseName": "刘煦之",
+    "photo": "images/eboard/david.jpg"
+  },
+  "Songhan": {
+    "name": "Songhan",
+    "chineseName": "张宋涵",
+    "photo": "images/eboard/songhan.jpg"
+  },
+  "Ted": {
+    "name": "Ted",
+    "chineseName": "夏陆尚上",
+    "photo": "images/eboard/ted.jpg"
+  }
+};
+const executiveBoard=[
+ {id:'Hedy',role:'Co-President 主席'},
+ {id:'Mary',role:'Co-President 主席'},
+ {id:'Bill',role:'Vice President 副主席'},
+ {id:'Wenjia',role:'Secretary 秘书'},
+ {id:'Emily',role:'Technical Director 技术总监'},
+ {id:'Hemchee',role:'Artistic Director 艺术总监'}
+];
+// Department boundaries and ordering follow the merged cells in the supplied roster.
+const boardGroups=[
+ {id:'Publicity',label:'Publicity 宣传部',members:['Susan','Mike','Rose','Yanni','Sophie','Kitty','Darcie','Anny','Karrie']},
+ {id:'Photography',label:'Photography 摄影部',members:['Ricky','Jack','Cynthia','Luna','Celine','Zemo','Stephanie','Rosita']},
+ {id:'Finance',label:'Finance 财务部',members:['Bill','Lillian','Ye']},
+ {id:'External',label:'External 外联部',members:['Carnegie','Leo','Cliff']},
+ {id:'Social',label:'Social 内联部',members:['Yan','Bowen','Wei','Steven','Jay','David','Songhan','Ted']}
+];
+function member(id,role=''){
+ const person=boardPeople[id];
+ const portrait=person.photo
+  ? `<div class="portrait"><img src="${person.photo}" alt="${person.name} ${person.chineseName}" loading="lazy" decoding="async"></div>`
+  : `<div class="portrait portrait-pending"><span lang="zh">照片待补</span></div>`;
+ return `<article class="member" data-member="${id}">${portrait}<h3>${person.name} <span lang="zh">${person.chineseName}</span></h3>${role?`<p>${role}</p>`:''}</article>`;
+}
+function departmentRows(group){
+ const rows=[];
+ for(let i=0;i<group.members.length;i+=4){
+  rows.push(`<div class="department-row">${group.members.slice(i,i+4).map(id=>member(id)).join('')}</div>`);
+ }
+ return rows.join('');
+}
+function eboard(){
+ const group=boardGroups.find(g=>g.id===department)||boardGroups[0];
+ main.innerHTML=`<section class="page-top shows-page-top eboard-page-top"><div><h1>Eboard <span lang="zh">境缘团队</span></h1></div></section><section class="board"><h2>Our executive board · 主席团</h2><div class="members">${executiveBoard.map(({id,role})=>member(id,role)).join('')}</div><div class="departments" aria-label="Departments">${boardGroups.map(g=>`<button data-dept="${g.id}" class="${g.id===group.id?'active':''}" aria-pressed="${g.id===group.id}">${g.label}</button>`).join('')}</div><section class="department-members" aria-label="${group.label}"><h2 class="department-title">${group.label}</h2>${departmentRows(group)}</section></section>`;
+ main.querySelectorAll('[data-dept]').forEach(b=>b.onclick=()=>{department=b.dataset.dept;eboard();main.querySelector(`[data-dept="${department}"]`).focus({preventScroll:true})});
+}
 const dialog=document.querySelector('dialog');function bindTickets(){document.querySelectorAll('[data-ticket]').forEach(b=>b.onclick=()=>dialog.showModal())}document.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('click',e=>{if(e.target===dialog){let r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});function render(){let page=location.hash.slice(1)||'home';document.querySelectorAll('nav a').forEach(a=>{a.classList.toggle('active',a.hash==='#'+page);if(a.hash==='#'+page)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});({home,shows,eboard}[page]||home)();bindTickets();window.scrollTo(0,0)}window.addEventListener('hashchange',render);render();
