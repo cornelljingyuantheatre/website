@@ -51,11 +51,30 @@ let entrancePlan = null;
 let scrollTarget=0, scrollProgress=0, scrollSource=null;
 // Figma 149:205: light centre, body radius 752.034 (home 244.5) and rotation.
 const showsTarget={x:1299.48,y:490.82,size:752.034/244.5,rotation:-29.96};
-const showFloats=[...document.querySelectorAll('.show-float')];
+// Each cue uses its own start, scroll span and travel in design pixels.
+const showFloatCues = [
+  ['.show-date', .43, .20, 24],
+  ['.show-title', .47, .36, 76],
+  ['.credit-name', .55, .26, 36],
+  ['.credit-role', .585, .20, 20],
+  ['.credit-script', .62, .24, 30],
+  ['.credit-source', .655, .22, 22],
+  ['.show-button-primary', .71, .22, 34],
+  ['.show-button-outline', .76, .22, 26],
+  ['.show-stories', .66, .31, 42],
+].map(([selector, start, span, rise]) => {
+  const element = showsContent.querySelector(selector);
+  // Preserve the designed opacity of each text element. The story wrapper
+  // starts hidden in CSS, so its target opacity is explicitly full.
+  const opacity = selector === '.show-stories' ? 1 : Number(getComputedStyle(element).opacity);
+  element.style.opacity = 0;
+  return { element, start, span, rise, opacity };
+});
+for (const group of showsContent.querySelectorAll('.show-float:not(.show-stories)')) {
+  group.style.opacity = 1;
+}
 // Scroll progress over which page-1 content fades out (light and timeline excluded).
 const homeFadeRange=[.03,.45];
-// Page-2 float-up: start, per-group delay and duration (scroll progress), rise in px.
-const floatStart=.45, floatStagger=.06, floatSpan=.3, floatRise=56;
 // The story sequence restarts from its first block whenever page 2 is reached.
 let storiesPlaying=false;
 let homeShown=true;
@@ -243,12 +262,15 @@ function render() {
   showsContent.inert=scrollProgress<.98;
   if(scrollProgress>=.9 && !storiesPlaying) { storiesPlaying=true; showsContent.classList.add('stories-playing'); }
   else if(scrollProgress<.5 && storiesPlaying) { storiesPlaying=false; showsContent.classList.remove('stories-playing'); }
-  // Page-2 groups float up in sequence (date, title, credits, buttons) as they arrive.
-  showFloats.forEach((el,i)=>{
-    const t=smootherstep(clamp((scrollProgress-(floatStart+i*floatStagger))/floatSpan,0,1));
-    el.style.opacity=t;
-    el.style.transform=reducedMotion.matches?'none':`translateY(${(1-t)*floatRise}px)`;
-  });
+  for (const { element, start, span, rise, opacity } of showFloatCues) {
+    const progress = clamp((scrollProgress - start) / span, 0, 1);
+    // Ease in briefly, then spend most of the travel slowing to a stop.
+    const remaining = (1 - progress) ** 4 * (1 + 4 * progress);
+    element.style.opacity = opacity * smootherstep(clamp(progress / .8, 0, 1));
+    element.style.transform = reducedMotion.matches
+      ? 'none'
+      : `translateY(${rise * remaining}px)`;
+  }
   const beam = beamAt(light.y);
   const beamBlur = focusBlur + beam.blur;
   const beamIntensity = brightness * beam.intensity;
