@@ -1,0 +1,108 @@
+:root {
+  color-scheme: dark; background: #000;
+}
+@font-face { font-family: AaRuiYaTi; src: url('./assets/fonts/aaruiyati-title.woff2') format('woff2'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'Alibaba PuHuiTi'; src: url('./assets/fonts/alibaba-puhuiti-3-85-bold.woff2') format('woff2'); font-weight: 700; font-display: block; }
+* { box-sizing: border-box; }
+html, body { width: 100%; min-height: 100%; margin: 0; overflow-x: clip; }
+.journey { position: relative; height: 220svh; }
+.scene { position: sticky; top: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; touch-action: pan-y; outline: none; }
+.scene:focus-visible { outline: 1px solid #6d1414; outline-offset: -6px; }
+.light-layer { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #000; }
+/* The light is the pre-rendered Figma 132:25 picture (blur, highlight and grain baked
+   in), so moving it is a cheap transform. Local box 689x689, circle centre (344.5,344.5).
+   The lower half crossfades to a copy whose blur (--beam-blur) grows with throw. */
+.light { position: absolute; left: 0; top: 0; width: 689px; height: 689px; transform-origin: 344.5px 344.5px; opacity: 0; isolation: isolate; mix-blend-mode: plus-lighter; will-change: transform, opacity; }
+.beam-surface { position: absolute; inset: -200px; mix-blend-mode: plus-lighter; }
+.beam-content { position: absolute; left: 200px; top: 200px; width: 689px; height: 689px; }
+.beam-art { display: block; position: absolute; left: 0; top: -13.5448px; width: 689px; height: 702.5448px; }
+.beam-clear { mask-image: linear-gradient(to bottom, #000 386px, transparent 772px); }
+.beam-soft { filter: blur(var(--beam-blur, 0px)); mask-image: linear-gradient(to bottom, transparent 386px, #000 772px); }
+/* Shows light (149:205): the Figma SVG rendered once at half resolution (its 507px blur
+   is far too costly to re-render while scaling), with the export's group-box filter clipping
+   removed and the disc blur scaled to 1/3 (42 -> 14) to match Figma's own render, which draws
+   it far tighter than the exported stdDeviation; the wide highlight haze is kept.
+   Box 2928x2910, light-body centre (1442.93,1586.98). */
+.shows-beam { position: absolute; left: 0; top: 0; width: 2928px; height: 2910px; transform-origin: 1442.93px 1586.98px; opacity: 0; mix-blend-mode: plus-lighter; will-change: transform, opacity; }
+.shows-beam img { display: block; width: 100%; height: 100%; }
+.stage { position: absolute; z-index: 1; width: 1512px; height: 982px; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--scale, 1)); transform-origin: center; pointer-events: none; isolation: isolate; overflow: hidden; }
+.text-field { position: absolute; inset: 0; width: 1512px; height: 982px; overflow: visible; }
+.glyph-field { isolation: isolate; }
+.color-state { mix-blend-mode: plus-lighter; }
+.person { position: absolute; left: 389px; top: 533px; width: 602px; height: 903px; object-fit: cover; user-select: none; }
+.person-shadow { filter: blur(10px); opacity: .3; transform-origin: 301px 173px; will-change: transform, opacity, filter; }
+.accessible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+
+/* Copy is black ink above the moving beam; the beam itself reveals it. Real text:
+   Alibaba PuHuiTi Bold 24/33, 80% black, orange grain and 0.5px blur (#intro-ink). */
+.side-copy { opacity: 0; position: absolute; left: 152px; top: 309.5px; z-index: 2; margin: 0; font: 700 24px/33px 'Alibaba PuHuiTi', sans-serif; color: rgb(0 0 0 / .8); white-space: nowrap; user-select: none; filter: url(#intro-ink); }
+.intro-line { display: block; }
+.title-word { font-family: AaRuiYaTi, serif; fill: #fff; }
+/* Preserve Figma's original photo crop and feathered ellipse, then intersect
+   it with a second mask driven by the same large moving spotlight. */
+.photo-frame { position: absolute; left: 975.9285px; top: 302.4285px; width: 537.143px; height: 377.143px; z-index: 1; overflow: hidden; mask-image: url('./assets/slides-mask.svg'); mask-size: 537.143px 377.143px; mask-position: 0 0; mask-repeat: no-repeat; mask-mode: alpha; }
+.photo-light { position: absolute; inset: 0; opacity: 0; }
+.photo-light, .side-copy { mask-image: radial-gradient(circle var(--reveal-radius, 1px) at var(--reveal-x, -1000px) var(--reveal-y, -1000px), rgba(0,0,0,1.000000) 24.528302%,rgba(0,0,0,1.000000) 25.117925%,rgba(0,0,0,1.000000) 25.707547%,rgba(0,0,0,1.000000) 26.297170%,rgba(0,0,0,1.000000) 26.886793%,rgba(0,0,0,1.000000) 27.476415%,rgba(0,0,0,1.000000) 28.066038%,rgba(0,0,0,1.000000) 28.655660%,rgba(0,0,0,1.000000) 29.245283%,rgba(0,0,0,1.000000) 29.834906%,rgba(0,0,0,1.000000) 30.424528%,rgba(0,0,0,1.000000) 31.014151%,rgba(0,0,0,1.000000) 31.603774%,rgba(0,0,0,1.000000) 32.193396%,rgba(0,0,0,1.000000) 32.783019%,rgba(0,0,0,1.000000) 33.372642%,rgba(0,0,0,1.000000) 33.962264%,rgba(0,0,0,1.000000) 34.551887%,rgba(0,0,0,1.000000) 35.141509%,rgba(0,0,0,1.000000) 35.731132%,rgba(0,0,0,1.000000) 36.320755%,rgba(0,0,0,1.000000) 36.910377%,rgba(0,0,0,1.000000) 37.500000%,rgba(0,0,0,1.000000) 38.089623%,rgba(0,0,0,1.000000) 38.679245%,rgba(0,0,0,1.000000) 39.268868%,rgba(0,0,0,1.000000) 39.858491%,rgba(0,0,0,1.000000) 40.448113%,rgba(0,0,0,1.000000) 41.037736%,rgba(0,0,0,1.000000) 41.627358%,rgba(0,0,0,1.000000) 42.216981%,rgba(0,0,0,1.000000) 42.806604%,rgba(0,0,0,1.000000) 43.396226%,rgba(0,0,0,1.000000) 43.985849%,rgba(0,0,0,1.000000) 44.575472%,rgba(0,0,0,1.000000) 45.165094%,rgba(0,0,0,1.000000) 45.754717%,rgba(0,0,0,1.000000) 46.344340%,rgba(0,0,0,1.000000) 46.933962%,rgba(0,0,0,1.000000) 47.523585%,rgba(0,0,0,1.000000) 48.113208%,rgba(0,0,0,1.000000) 48.702830%,rgba(0,0,0,1.000000) 49.292453%,rgba(0,0,0,1.000000) 49.882075%,rgba(0,0,0,1.000000) 50.471698%,rgba(0,0,0,1.000000) 51.061321%,rgba(0,0,0,1.000000) 51.650943%,rgba(0,0,0,1.000000) 52.240566%,rgba(0,0,0,1.000000) 52.830189%,rgba(0,0,0,1.000000) 53.419811%,rgba(0,0,0,1.000000) 54.009434%,rgba(0,0,0,1.000000) 54.599057%,rgba(0,0,0,1.000000) 55.188679%,rgba(0,0,0,1.000000) 55.778302%,rgba(0,0,0,1.000000) 56.367925%,rgba(0,0,0,1.000000) 56.957547%,rgba(0,0,0,1.000000) 57.547170%,rgba(0,0,0,1.000000) 58.136792%,rgba(0,0,0,1.000000) 58.726415%,rgba(0,0,0,1.000000) 59.316038%,rgba(0,0,0,0.999958) 59.905660%,rgba(0,0,0,0.999725) 60.495283%,rgba(0,0,0,0.999141) 61.084906%,rgba(0,0,0,0.998067) 61.674528%,rgba(0,0,0,0.996374) 62.264151%,rgba(0,0,0,0.993948) 62.853774%,rgba(0,0,0,0.990689) 63.443396%,rgba(0,0,0,0.986510) 64.033019%,rgba(0,0,0,0.981336) 64.622642%,rgba(0,0,0,0.975104) 65.212264%,rgba(0,0,0,0.967762) 65.801887%,rgba(0,0,0,0.959272) 66.391509%,rgba(0,0,0,0.949604) 66.981132%,rgba(0,0,0,0.938738) 67.570755%,rgba(0,0,0,0.926666) 68.160377%,rgba(0,0,0,0.913387) 68.750000%,rgba(0,0,0,0.898911) 69.339623%,rgba(0,0,0,0.883254) 69.929245%,rgba(0,0,0,0.866442) 70.518868%,rgba(0,0,0,0.848509) 71.108491%,rgba(0,0,0,0.829493) 71.698113%,rgba(0,0,0,0.809441) 72.287736%,rgba(0,0,0,0.788406) 72.877358%,rgba(0,0,0,0.766446) 73.466981%,rgba(0,0,0,0.743624) 74.056604%,rgba(0,0,0,0.720009) 74.646226%,rgba(0,0,0,0.695674) 75.235849%,rgba(0,0,0,0.670694) 75.825472%,rgba(0,0,0,0.645150) 76.415094%,rgba(0,0,0,0.619124) 77.004717%,rgba(0,0,0,0.592701) 77.594340%,rgba(0,0,0,0.565970) 78.183962%,rgba(0,0,0,0.539017) 78.773585%,rgba(0,0,0,0.511934) 79.363208%,rgba(0,0,0,0.484812) 79.952830%,rgba(0,0,0,0.457740) 80.542453%,rgba(0,0,0,0.430809) 81.132075%,rgba(0,0,0,0.404110) 81.721698%,rgba(0,0,0,0.377730) 82.311321%,rgba(0,0,0,0.351758) 82.900943%,rgba(0,0,0,0.326277) 83.490566%,rgba(0,0,0,0.301370) 84.080189%,rgba(0,0,0,0.277117) 84.669811%,rgba(0,0,0,0.253594) 85.259434%,rgba(0,0,0,0.230872) 85.849057%,rgba(0,0,0,0.209020) 86.438679%,rgba(0,0,0,0.188100) 87.028302%,rgba(0,0,0,0.168170) 87.617925%,rgba(0,0,0,0.149281) 88.207547%,rgba(0,0,0,0.131480) 88.797170%,rgba(0,0,0,0.114806) 89.386792%,rgba(0,0,0,0.099289) 89.976415%,rgba(0,0,0,0.084956) 90.566038%,rgba(0,0,0,0.071822) 91.155660%,rgba(0,0,0,0.059894) 91.745283%,rgba(0,0,0,0.049173) 92.334906%,rgba(0,0,0,0.039647) 92.924528%,rgba(0,0,0,0.031297) 93.514151%,rgba(0,0,0,0.024091) 94.103774%,rgba(0,0,0,0.017989) 94.693396%,rgba(0,0,0,0.012937) 95.283019%,rgba(0,0,0,0.008873) 95.872642%,rgba(0,0,0,0.005719) 96.462264%,rgba(0,0,0,0.003386) 97.051887%,rgba(0,0,0,0.001774) 97.641509%,rgba(0,0,0,0.000765) 98.231132%,rgba(0,0,0,0.000232) 98.820755%,rgba(0,0,0,0.000030) 99.410377%,rgba(0,0,0,0.000000) 100.000000%); mask-repeat: no-repeat;  }
+.photo-stack { position: absolute; inset: 0; isolation: isolate; }
+.photo-slide { position: absolute; inset: 0; opacity: 0; mix-blend-mode: plus-lighter; }
+.photo-first { opacity: 1; }
+.side-photo { position: absolute; display: block; max-width: none; user-select: none; }
+.photo-first .side-photo { left: -66.428571px; top: -97.428571px; width: 752.709778px; height: 564.532288px; }
+.photo-second .side-photo { left: -136.428571px; top: -95.428571px; width: 810px; height: 607px; opacity: .8; }
+/* 1.6s hold + 1.6s eased crossfade. Complementary additive layers avoid a dark dip. */
+.photo-stack.is-ready .photo-slide { animation: photo-cycle 6.4s cubic-bezier(.45,0,.55,1) infinite; }
+.photo-stack.is-ready .photo-second { animation-delay: -3.2s; }
+@keyframes photo-cycle { 0%, 25% { opacity: 1; } 50%, 75% { opacity: 0; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .photo-stack.is-ready .photo-slide { animation: none; } .photo-first { opacity: 1; } .photo-second { opacity: 0; } }
+
+/* Unlit orange is a whole-title state, enabled only after all light leaves. */
+.title-unlit { opacity: calc(var(--unlit-opacity) * var(--unlit-reveal, 0)); }
+
+
+@font-face { font-family: Inter; src: url('./assets/inter-regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+.home-content { position: absolute; inset: 0; z-index: 1; overflow: hidden; will-change: transform, opacity; }
+@font-face { font-family: 'Alibaba PuHuiTi'; src: url('./assets/fonts/alibaba-puhuiti-3-65-medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+.shows-content { position: absolute; inset: 0; z-index: 3; font-family: Inter, sans-serif; font-weight: 400; color: #fff; transform: translateY(982px); will-change: transform; }
+/* Each group floats up into place as page 2 arrives (JS sets transform/opacity). */
+.show-float { position: absolute; inset: 0; pointer-events: none; opacity: 0; will-change: transform, opacity; }
+.show-float p { margin: 0; position: absolute; white-space: nowrap; text-align: right; }
+/* Figma 163:201 — SF Pro Semibold is Apple-only, so the system UI face stands in. */
+.show-date { right: 1152px; top: 248px; font: 600 16px/normal -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, sans-serif; opacity: .75; text-shadow: 0 1.306px 16.325px #000; }
+/* 对岸 / The Other Shore lockup (163:82) kept as an image. The black export was converted to
+   alpha (max channel), so it composites the same as additive light over black. */
+.show-title { position: absolute; left: 166.297px; top: 287.494px; width: 260px; height: 342px; user-select: none; }
+/* Story (164:304-308, 164:329), right-aligned to each Figma block's right edge: six blocks fade in 2s, fade out 2s, one after another
+   (24s loop), starting each time page 2 is reached. */
+.show-float .story { position: absolute; margin: 0; opacity: 0; text-align: right; white-space: nowrap; color: rgb(255 255 255 / .9);
+  font: 500 16px/2 'Alibaba PuHuiTi', sans-serif; letter-spacing: .8px; text-shadow: 0 4px 4px rgb(0 0 0 / .25); will-change: opacity; }
+.story-line { display: block; opacity: .8; }
+.story-hl { font-weight: 700; color: transparent; text-shadow: none;
+  background: linear-gradient(var(--hl-angle), #ff6600 10.514%, rgb(255 215 167 / .8) 93.972%); -webkit-background-clip: text; background-clip: text; }
+.stories-playing .story { animation: story-cycle 24s infinite; }
+.stories-playing .story:nth-child(2) { animation-delay: 4s; }
+.stories-playing .story:nth-child(3) { animation-delay: 8s; }
+.stories-playing .story:nth-child(4) { animation-delay: 12s; }
+.stories-playing .story:nth-child(5) { animation-delay: 16s; }
+.stories-playing .story:nth-child(6) { animation-delay: 20s; }
+@keyframes story-cycle {
+  0% { opacity: 0; animation-timing-function: ease-in-out; }
+  8.3333% { opacity: 1; animation-timing-function: ease-in-out; }
+  16.6667% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.credit { font: 500 10.111px/normal 'Alibaba PuHuiTi', sans-serif; letter-spacing: 1.0111px; opacity: .75; text-shadow: 0 1.306px 16.325px #000; }
+.credit-latin { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, sans-serif; font-weight: 600; letter-spacing: .48px; }
+.credit-note { font-size: 7.196px; letter-spacing: 0; opacity: .6; text-shadow: 0 .929px 11.618px #000; }
+.credit-name { right: 1177.86px; top: 601px; }
+.credit-role { right: 1208.43px; top: 617.652px; }
+.credit-script { right: 1183.9px; top: 639.201px; }
+.credit-source { right: 1140px; top: 652.914px; }
+.show-button { position: absolute; top: 701px; width: 89.08px; height: 32.08px; display: flex; align-items: center; justify-content: center; padding: 8px 0; border: .54px solid #b62a34; border-radius: 19.5px; overflow: hidden; color: #fff; font: 400 12px/normal Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
+.show-button span { position: relative; }
+.show-button-primary { left: 201px; background: #b62a34; box-shadow: 0 4px 12px -2px rgb(0 0 0 / .2); }
+.show-button-primary img { position: absolute; left: -24.54px; top: -30.54px; width: 115px; height: 92px; pointer-events: none; }
+.show-button-outline { left: 301px; background: transparent; filter: drop-shadow(0 4px 6px rgb(0 0 0 / .2)); }
+.show-button:focus-visible { outline: 1px solid #b62a34; outline-offset: 6px; }
+
+@media (max-width: 699px) { .shows-content { left: 286px; right: -286px; } }
