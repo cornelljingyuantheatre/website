@@ -1,5 +1,19 @@
 const showArchive = [
   {
+    "id": "the-other-shore-2026",
+    "season": "Fall 2026",
+    "title": "《对岸》\nThe Other Shore",
+    "directors": "杨粟元 Steven",
+    "descriptionZh": "父亲卫洛民经营着一家玩具厂，过去靠自己的打拼撑起了全家的体面生活。但如今工厂陷入困境，债务陆续到期，他把救回这个家的希望，全部押在了自己一手培养、名校毕业的长子卫家俊身上。家俊恰好在这时回到家中，可父亲眼里的“成功儿子”，也有自己的困境和说不出口的话。母亲林瑾努力维持着一家人的日常，女儿卫子弈则走着一条不太被父亲认可的道路。",
+    "descriptionEn": "",
+    "poster": [],
+    "trailer": [],
+    "cast": "",
+    "crew": "",
+    "photos": [],
+    "video": []
+  },
+  {
     "id": "show-2",
     "season": "Spring 2026",
     "title": "《一个无政府主义者的意外死亡》\nThe Accidental Death of An Anarchist",
