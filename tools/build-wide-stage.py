@@ -67,17 +67,7 @@ defs.append('''<g id="illumination" opacity="0" style="isolation:isolate"><g mas
 <filter id="coverage-black" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter>
 <mask id="light-inside" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#illumination"/></mask>
 <mask id="light-outside" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:luminance"><rect x="-3000" y="-3000" width="8000" height="8000" fill="white"/><use href="#illumination" filter="url(#coverage-black)"/></mask>
-<!-- The top of the spotlight is focused. Preserve spill near the sides and the softer bottom. -->
-<linearGradient id="lettering-upper-weight" gradientUnits="userSpaceOnUse" x1="0" y1="175" x2="0" y2="285">
-<stop offset="0" stop-color="white"/><stop offset="25%" stop-color="white" stop-opacity=".84"/><stop offset="75%" stop-color="white" stop-opacity=".16"/><stop offset="100%" stop-color="white" stop-opacity="0"/>
-</linearGradient>
-<linearGradient id="lettering-side-weight" gradientUnits="userSpaceOnUse" x1="0" y1="175" x2="0" y2="285">
-<stop offset="0" stop-color="white" stop-opacity="0"/><stop offset="25%" stop-color="white" stop-opacity=".16"/><stop offset="75%" stop-color="white" stop-opacity=".84"/><stop offset="100%" stop-color="white"/>
-</linearGradient>
-<g id="lettering-upper-field"><rect x="-40" y="-40" width="769" height="769" fill="url(#lettering-upper-weight)"/></g>
-<mask id="lettering-upper-band" maskUnits="userSpaceOnUse" x="-40" y="-40" width="769" height="769" style="mask-type:alpha"><use href="#lettering-upper-field"/></mask>
-<mask id="lettering-side-band" maskUnits="userSpaceOnUse" x="-40" y="-40" width="769" height="769" style="mask-type:alpha"><rect x="-40" y="-40" width="769" height="769" fill="url(#lettering-side-weight)"/></mask>
-<g id="rim-light-field"><rect x="-40" y="-40" width="769" height="769" fill="url(#rim-reveal-ramp)" mask="url(#lettering-side-band)"/></g>
+<g id="rim-light-field"><rect x="-200" y="-200" width="1089" height="1089" fill="url(#rim-reveal-ramp)"/></g>
 <mask id="rim-light-visibility" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#rim-light-field"/></mask>
 <!-- The beam radius is 244.5 in field coordinates. Feather only outside it. -->
 <radialGradient id="lettering-reveal-ramp" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="270">
@@ -93,19 +83,7 @@ defs.append('''<g id="illumination" opacity="0" style="isolation:isolate"><g mas
 <stop offset="95%" stop-color="#8d2a19"/>
 <stop offset="100%" stop-color="#932c1a"/>
 </radialGradient>
-<radialGradient id="lettering-upper-ink" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="244.5">
-<stop offset="0" stop-color="#330e09"/><stop offset="56%" stop-color="#3e140e"/>
-<stop offset="72%" stop-color="#561911"/><stop offset="84%" stop-color="#792115"/>
-<stop offset="93%" stop-color="#a52b19"/><stop offset="100%" stop-color="#bd2d19"/>
-</radialGradient>
-<radialGradient id="lettering-upper-reveal" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="249">
-<stop offset="0" stop-color="white"/><stop offset="98.192771%" stop-color="white"/><stop offset="100%" stop-color="white" stop-opacity="0"/>
-</radialGradient>
-<g id="lettering-light-field" opacity="0" style="isolation:isolate">
-<rect x="74.5" y="74.5" width="540" height="540" fill="url(#lettering-reveal-ramp)" mask="url(#lettering-side-band)"/>
-<rect x="74.5" y="74.5" width="540" height="540" fill="url(#lettering-upper-reveal)" mask="url(#lettering-upper-band)" style="mix-blend-mode:plus-lighter"/>
-</g>
-<mask id="lettering-upper-tint" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use id="lettering-upper-tint-field" href="#lettering-upper-field"/></mask>
+<g id="lettering-light-field" opacity="0"><rect x="74.5" y="74.5" width="540" height="540" fill="url(#lettering-reveal-ramp)"/></g>
 <mask id="lettering-light-visibility" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use href="#lettering-light-field"/></mask>''')
 
 body = []
@@ -120,12 +98,12 @@ for k, *_ in W:
     body.append(f'<use href="#word-{k}" fill="#ff2b00"/>')
 body.append('</g>')
 # 3. Sharp lettering shaded with opaque ink colors inside the beam.
-body.append('<g class="lit-lettering" fill="url(#lettering-ink)" mask="url(#lettering-light-visibility)"><g id="lit-glyphs">')
+body.append('<g class="lit-lettering" fill="url(#lettering-ink)" mask="url(#lettering-light-visibility)">')
 for k, t, x, y, s, slot, sh, red in W:
     bx, by, bw, bh = slot
     body.append(f'<g class="glyph-field" data-word="{k}"><rect class="glyph-slot" x="{bx}" y="{by}" width="{bw}" height="{bh}" fill="none"/>'
                 f'<use href="#word-{k}"/></g>')
-body.append('</g><use href="#lit-glyphs" fill="url(#lettering-upper-ink)" mask="url(#lettering-upper-tint)"/></g>')
+body.append('</g>')
 # 4. Whole-wordmark sharp red state (frame 195:341), outside the light only.
 body.append('<g class="red-wordmark" opacity="0" mask="url(#light-outside)">')
 for k, t, x, y, s, slot, sh, red in W:
