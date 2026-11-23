@@ -2,7 +2,7 @@
 """Generate stage/wide/index.html (widescreen redesign prototype).
 
 Lettering masks reuse the gradient fields of stage/index.html at commit 25c8682
-(illumination, outer falloff, upper/lower weights, rim reveal) so the beam's reveal,
+(illumination, text depth, upper/lower weights, rim reveal) so the beam's reveal,
 rim and red-state behaviour match the existing implementation. Geometry comes from
 Figma frames 154:238 (state 1), 191:34 (state 2), 195:341 (red) and 192:168 (对岸).
 Run from the repository root:  python3 tools/build-wide-stage.py
@@ -34,36 +34,29 @@ def tighten_rim(gradient):
 
 
 fields = tighten_rim(grab('rim-reveal-ramp', 'radialGradient'))
+fields += grab('text-depth-ramp', 'radialGradient')
 fields += ''.join(grab(i, 'radialGradient') for i in ['outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
 fields += ''.join(grab(i, 'linearGradient') for i in ['upper-field-weight', 'lower-field-weight'])
-soft_large = grab('title-soft-large', 'filter')
-soft_small = grab('title-soft-small', 'filter')
 intro_ink = grab('intro-ink', 'filter')
 
 # Glyph slots (local = state-1 coordinates) from the existing stage, plus Figma colours.
 #        key       text      x    baseline  size    slot(x,y,w,h)                                      ink (154:238)            shadow fill (191:109)       red (195:341)
 W = [
-    ('jing',    '境',      613, 450.016, 184,    (616.223633, 288.911987, 164.304688, 193.375977), 'rgb(62,20,14)',        'rgba(62,20,14,.8)',  '#e62f0c', 'large'),
-    ('chinese', 'Chinese', 796, 355.2051, 30.525, (793.526367, 327.373352, 114.767578, 32.939209),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408', 'small'),
-    ('drama',   'Drama',   816, 391.2051, 30.525, (814.411133, 363.587036, 97.939453, 32.572937),   'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408', 'small'),
-    ('society', 'Society', 810, 427.2051, 30.525, (807.526367, 399.403931, 104.647461, 38.586365),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408', 'small'),
-    ('at',      'At',      622, 522.2051, 30.525, (618.305664, 494.587036, 35.650391, 32.664551),   'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408', 'small'),
-    ('cornell', 'Cornell', 622, 558.2051, 30.525, (619.526367, 530.373413, 103.360352, 32.939209),  'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408', 'small'),
-    ('yuan',    '缘',      729, 620.016, 184,    (737.192383, 459.463989, 157.496094, 191.536011), 'rgb(51,14,9)',         'rgba(51,14,9,.75)',  '#e62f0c', 'large'),
+    ('jing',    '境',      613, 450.016, 184,    (616.223633, 288.911987, 164.304688, 193.375977), 'rgb(62,20,14)',        'rgba(62,20,14,.8)',  '#e62f0c'),
+    ('chinese', 'Chinese', 796, 355.2051, 30.525, (793.526367, 327.373352, 114.767578, 32.939209),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
+    ('drama',   'Drama',   816, 391.2051, 30.525, (814.411133, 363.587036, 97.939453, 32.572937),   'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
+    ('society', 'Society', 810, 427.2051, 30.525, (807.526367, 399.403931, 104.647461, 38.586365),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
+    ('at',      'At',      622, 522.2051, 30.525, (618.305664, 494.587036, 35.650391, 32.664551),   'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408'),
+    ('cornell', 'Cornell', 622, 558.2051, 30.525, (619.526367, 530.373413, 103.360352, 32.939209),  'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408'),
+    ('yuan',    '缘',      729, 620.016, 184,    (737.192383, 459.463989, 157.496094, 191.536011), 'rgb(51,14,9)',         'rgba(51,14,9,.75)',  '#e62f0c'),
 ]
 
-def pad(slot, p):
-    x, y, w, h = slot
-    return x - p, y - p, w + 2 * p, h + 2 * p
 
-defs = [soft_large, soft_small, intro_ink, fields]
-# Text sources (real AaRuiYaTi text) and per-glyph alpha masks.
+defs = [intro_ink, fields]
+# Shared live AaRuiYaTi glyphs for the two reveals and their shadows.
 for k, t, x, y, s, slot, *_ in W:
     defs.append(f'<text id="word-{k}" class="title-word" x="{x}" y="{y}" font-size="{s}">{t}</text>')
-for k, t, x, y, s, slot, ink, sh, red, kind in W:
-    bx, by, bw, bh = pad(slot, 14 if kind == 'large' else 6)
-    defs.append(f'<mask id="sharp-{k}" maskUnits="userSpaceOnUse" x="{bx:.3f}" y="{by:.3f}" width="{bw:.3f}" height="{bh:.3f}" style="mask-type:alpha"><use href="#word-{k}"/></mask>')
-    defs.append(f'<mask id="soft-{k}" maskUnits="userSpaceOnUse" x="{bx:.3f}" y="{by:.3f}" width="{bw:.3f}" height="{bh:.3f}" style="mask-type:alpha"><use href="#word-{k}" filter="url(#title-soft-{kind})"/></mask>')
+for k, *_ in W:
     # Shadow blur: own filter per glyph so its radius can follow the light.
     defs.append(f'<filter id="shadow-blur-{k}" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB"><feGaussianBlur class="shadow-sd" stdDeviation="5"/></filter>')
 
@@ -75,44 +68,31 @@ defs.append('''<g id="illumination" opacity="0" style="isolation:isolate"><g mas
 <mask id="light-inside" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#illumination"/></mask>
 <mask id="light-outside" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:luminance"><rect x="-3000" y="-3000" width="8000" height="8000" fill="white"/><use href="#illumination" filter="url(#coverage-black)"/></mask>
 <g id="rim-light-field"><rect x="-200" y="-200" width="1089" height="1089" fill="url(#rim-reveal-ramp)"/></g>
-<mask id="rim-light-visibility" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#rim-light-field"/></mask>''')
-# Core field: 1 in the beam core, 0 beyond its feathered edge (smootherstep), in the same
-# 689-unit light frame as the other fields. Sharp strokes use it; soft strokes its complement.
-r0, r1, R = 185.0, 265.0, 265.0
-stops = []
-for i in range(41):
-    rr = R * i / 40
-    t = min(1, max(0, (rr - r0) / (r1 - r0)))
-    a = 1 - t * t * t * (t * (t * 6 - 15) + 10)
-    stops.append(f'<stop offset="{i/40:.4f}" stop-color="white" stop-opacity="{a:.5f}"/>')
-defs.append(f'<radialGradient id="core-ramp" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="{R}">{"".join(stops)}</radialGradient>')
-defs.append('<g id="core-field"><rect x="-3000" y="-3000" width="8000" height="8000" fill="url(#core-ramp)"/></g>')
-defs.append('<mask id="core-sharp" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#core-field"/></mask>')
-defs.append('<mask id="core-soft" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:luminance"><rect x="-3000" y="-3000" width="8000" height="8000" fill="white"/><use href="#core-field" filter="url(#coverage-black)"/></mask>')
+<mask id="rim-light-visibility" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#rim-light-field"/></mask>
+<g id="text-depth-field"><rect x="-5.5" y="-5.5" width="700" height="700" fill="url(#text-depth-ramp)"/></g>
+<mask id="text-depth-visibility" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use href="#text-depth-field"/><rect id="text-depth-bypass" x="590" y="270" width="350" height="400" fill="white" opacity="0"/></mask>''')
 
 body = []
 # 1. Per-word shadows (Figma Group 56 / 55), lit only by the beam.
 body.append('<g class="shadow-layer" mask="url(#light-inside)"><g class="shadow-group" opacity=".5">')
-for k, t, x, y, s, slot, ink, sh, red, kind in W:
+for k, t, x, y, s, slot, ink, sh, red in W:
     body.append(f'<g class="word-shadow" data-word="{k}" filter="url(#shadow-blur-{k})"><use href="#word-{k}" style="fill:{sh}"/></g>')
 body.append('</g></g>')
 # 2. Peripheral rim copy (existing behaviour: faint strokes ahead of the main beam).
 body.append('<g class="rim-lettering" mask="url(#rim-light-visibility)">')
-for k, t, x, y, s, slot, *_ in W:
-    sx, sy, sw, sh_ = slot
-    body.append(f'<g mask="url(#soft-{k})"><rect x="{sx}" y="{sy}" width="{sw}" height="{sh_}" fill="#ff2b00"/></g>')
+for k, *_ in W:
+    body.append(f'<use href="#word-{k}" fill="#ff2b00"/>')
 body.append('</g>')
-# 3. Lit lettering: sharp in the beam core, softened across the feathered edge.
-body.append('<g class="lit-lettering" mask="url(#light-inside)">')
-for k, t, x, y, s, slot, ink, sh, red, kind in W:
-    bx, by, bw, bh = pad(slot, 14 if kind == 'large' else 6)
-    body.append(f'<g class="glyph-field" data-word="{k}"><rect class="glyph-slot" x="{slot[0]}" y="{slot[1]}" width="{slot[2]}" height="{slot[3]}" fill="none"/>'
-                f'<g mask="url(#core-sharp)"><g mask="url(#sharp-{k})"><rect x="{bx:.3f}" y="{by:.3f}" width="{bw:.3f}" height="{bh:.3f}" fill="{ink}"/></g></g>'
-                f'<g mask="url(#core-soft)"><g mask="url(#soft-{k})"><rect x="{bx:.3f}" y="{by:.3f}" width="{bw:.3f}" height="{bh:.3f}" fill="{ink}"/></g></g></g>')
-body.append('</g>')
+# 3. Sharp lettering with independent illumination and inward opacity falloff.
+body.append('<g class="lit-lettering" mask="url(#light-inside)"><g class="lettering-depth" mask="url(#text-depth-visibility)">')
+for k, t, x, y, s, slot, ink, sh, red in W:
+    bx, by, bw, bh = slot
+    body.append(f'<g class="glyph-field" data-word="{k}"><rect class="glyph-slot" x="{bx}" y="{by}" width="{bw}" height="{bh}" fill="none"/>'
+                f'<use href="#word-{k}" style="fill:{ink}"/></g>')
+body.append('</g></g>')
 # 4. Whole-wordmark sharp red state (frame 195:341), outside the light only.
 body.append('<g class="red-wordmark" opacity="0" mask="url(#light-outside)">')
-for k, t, x, y, s, slot, ink, sh, red, kind in W:
+for k, t, x, y, s, slot, ink, sh, red in W:
     body.append(f'<use href="#word-{k}" style="fill:{red}"/>')
 body.append('</g>')
 
@@ -135,23 +115,17 @@ curtain = ('<div class="curtain" data-node-id="206:50">'
 
 shore = '''<section class="shore" data-node-id="192:168" aria-label="对岸 The Other Shore · Dec. 5 2026">
 <div class="shore-city" data-node-id="196:366"></div>
-<svg class="shore-fx" width="0" height="0" aria-hidden="true"><defs><filter id="ripple-a" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="560" y="300" width="400" height="560" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.0333" numOctaves="2" seed="11" result="noise"><animate attributeName="baseFrequency" values="0.01 0.0333;0.01096 0.0361;0.01 0.0333" keyTimes="0;.5;1" calcMode="spline" keySplines=".5 0 .5 1;.42 0 .58 1" dur="5s" repeatCount="indefinite"/></feTurbulence><feColorMatrix in="noise" type="matrix" values="1 0 0 0 0  0 0 0 0 .5  0 0 0 0 0  0 0 0 0 1" result="nx"/><feDisplacementMap in="SourceGraphic" in2="nx" scale="40" xChannelSelector="R" yChannelSelector="G" result="disp"><animate attributeName="scale" values="40;21.5;40" keyTimes="0;.5;1" calcMode="spline" keySplines=".5 0 .5 1;.42 0 .58 1" dur="5s" repeatCount="indefinite"/></feDisplacementMap><feGaussianBlur in="disp" stdDeviation=".9" result="glass"/><feImage href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%221512%22%20height%3D%22982%22%20viewBox%3D%220%200%201512%20982%22%3E%3Cfilter%20id%3D%22b%22%20x%3D%22-50%25%22%20y%3D%22-50%25%22%20width%3D%22200%25%22%20height%3D%22200%25%22%3E%3CfeGaussianBlur%20stdDeviation%3D%2214%22/%3E%3C/filter%3E%3Cg%20filter%3D%22url%28%23b%29%22%3E%3Crect%20x%3D%22631.512%22%20y%3D%22436.09%22%20width%3D%22153.584%22%20height%3D%22155.147%22%20rx%3D%2276.792%22%20transform%3D%22rotate%28.93%20631.512%20436.09%29%22%20fill%3D%22%23fff%22/%3E%3C/g%3E%3C/svg%3E" x="0" y="0" width="1512" height="982" preserveAspectRatio="none" result="weight"/><feComposite in="glass" in2="weight" operator="in" result="inside"/><feComposite in="SourceGraphic" in2="weight" operator="out" result="outside"/><feMerge><feMergeNode in="outside"/><feMergeNode in="inside"/></feMerge></filter><filter id="ripple-b" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="560" y="300" width="400" height="560" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.0333" numOctaves="2" seed="11" result="noise"><animate attributeName="baseFrequency" values="0.01 0.0333;0.01096 0.0361;0.01 0.0333" keyTimes="0;.5;1" calcMode="spline" keySplines=".5 0 .5 1;.42 0 .58 1" dur="5s" repeatCount="indefinite"/></feTurbulence><feColorMatrix in="noise" type="matrix" values="1 0 0 0 0  0 0 0 0 .5  0 0 0 0 0  0 0 0 0 1" result="nx"/><feDisplacementMap in="SourceGraphic" in2="nx" scale="40" xChannelSelector="R" yChannelSelector="G" result="disp"><animate attributeName="scale" values="40;21.5;40" keyTimes="0;.5;1" calcMode="spline" keySplines=".5 0 .5 1;.42 0 .58 1" dur="5s" repeatCount="indefinite"/></feDisplacementMap><feGaussianBlur in="disp" stdDeviation=".9" result="glass"/><feImage href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%221512%22%20height%3D%22982%22%20viewBox%3D%220%200%201512%20982%22%3E%3Cfilter%20id%3D%22b%22%20x%3D%22-50%25%22%20y%3D%22-50%25%22%20width%3D%22200%25%22%20height%3D%22200%25%22%3E%3CfeGaussianBlur%20stdDeviation%3D%2214%22/%3E%3C/filter%3E%3Cg%20filter%3D%22url%28%23b%29%22%3E%3Crect%20x%3D%22695.575%22%20y%3D%22569.278%22%20width%3D%22187.45%22%20height%3D%2295.492%22%20rx%3D%2247.746%22%20transform%3D%22rotate%28.93%20695.575%20569.278%29%22%20fill%3D%22%23fff%22/%3E%3C/g%3E%3C/svg%3E" x="0" y="0" width="1512" height="982" preserveAspectRatio="none" result="weight"/><feComposite in="glass" in2="weight" operator="in" result="inside"/><feComposite in="SourceGraphic" in2="weight" operator="out" result="outside"/><feMerge><feMergeNode in="outside"/><feMergeNode in="inside"/></feMerge></filter></defs></svg>
 <div class="shore-title" aria-hidden="true">
- <div class="ripple ripple-b"><!-- pool B (196:420) distorts everything below it: 对, pool A, 岸 -->
-  <div class="ripple ripple-a"><!-- pool A (196:395) distorts 对 only -->
    <div class="shore-mask dui" data-node-id="196:370">
-    <img class="fill dui-base" src="assets/shore-dui-fill.webp" alt="">
-    <img class="fill dui-move" src="assets/shore-dui-fill.webp" alt="">
-    <img class="fill dui-mirror" src="assets/shore-dui-mirror-fill.webp" alt="">
+    <img class="fill dui-base" loading="lazy" decoding="async" src="assets/shore-dui-fill.webp" alt="">
+    <img class="fill dui-mirror" loading="lazy" decoding="async" src="assets/shore-dui-mirror-fill.webp" alt="">
    </div>
-  </div>
   <div class="shore-pool pool-a" data-node-id="196:395"></div>
   <div class="shore-mask an" data-node-id="196:396">
-   <img class="fill an-base" src="assets/shore-an-fill.webp" alt="">
-   <img class="fill an-move" src="assets/shore-an-fill.webp" alt="">
+   <img class="fill an-base" loading="lazy" decoding="async" src="assets/shore-an-fill.webp" alt="">
+   <img class="fill an-move" loading="lazy" decoding="async" src="assets/shore-an-fill.webp" alt="">
   </div>
- </div>
- <img class="shore-english" data-node-id="196:404" src="assets/shore-english-group51.svg" alt="">
+ <img class="shore-english" loading="lazy" decoding="async" data-node-id="196:404" src="assets/shore-english-group51.svg" alt="">
  <div class="shore-pool pool-b" data-node-id="196:420"></div>
 </div>
 <h2 class="accessible">对岸 The Other Shore</h2>

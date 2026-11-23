@@ -9,11 +9,12 @@ const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
 const lightPng = $('.light-png'), light2 = $('.light2-css');
 const titleGroup = $('#title-group');
-const illumination = $('#illumination'), rimField = $('#rim-light-field'), coreField = $('#core-field');
+const illumination = $('#illumination'), rimField = $('#rim-light-field');
+const letteringDepth = $('.lettering-depth'), textDepthField = $('#text-depth-field');
+const textDepthBypass = $('#text-depth-bypass');
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
 const rimLettering = $('.rim-lettering'), redMark = $('.red-wordmark'), shadowGroup = $('.shadow-group');
-const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore'), shoreFx = $('.shore-fx');
-shoreFx.pauseAnimations();
+const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore');
 let curtainReady = false;
 Promise.all([...curtain.querySelectorAll('img')].map(image => image.decode())).then(() => {
   curtainReady = true;
@@ -38,7 +39,7 @@ const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussi
 const U_SHORE = 2830, U_MAX = 2830;              // The Other Shore starts under frame 2 (2830 tall)
 const PARALLAX = .88;                           // Light still trails the title.
 const SCROLL_RESPONSE_MS = 95;
-const RIM_OPACITY = .22;
+const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
 const GROW_MS = 1500, GESTURE_GAP = 260;
 
@@ -62,6 +63,7 @@ let anim = null;                 // { from, to, start, src }
 let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
+let curtainStart = 0, lightExitLift = 0, titleExit = 0;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -141,7 +143,12 @@ function lerpPose(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t)
 // Light pose in viewport-design coordinates (before the stage offset).
 function currentPose() {
   if (phase === 'state1') return state1Pose();
-  if (phase === 'state2') return { x: STATE2.x, y: STATE2.y - PARALLAX * u, size: state2Size };
+  if (phase === 'state2') {
+    // Initial parallax gives way to a faster lift into the curtain. At its
+    // reveal only the light's own soft lower edge can still be on screen.
+    const lift = PARALLAX * u + lightExitLift * smooth(curtainStart * .53, curtainStart, u);
+    return { x: STATE2.x, y: STATE2.y - lift, size: state2Size };
+  }
   const e = smootherstep(grow);
   return lerpPose(anim.src, { ...STATE2, size: state2Size }, e);
 }
@@ -149,23 +156,27 @@ function titleTransform(e) { return { x: lerp(TITLE_ORIGIN.x, TITLE2.x, e), y: l
 
 // ---------- render ----------
 let lastSoft = null;
+let parkedShadows = false;
 function render(time) {
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
   const beam = beamAt(light.y);
   const inState1 = phase === 'state1';
   const beamBlur = (focusBlur + beam.blur) * (1 - e);
-  const viewportBottom = (vh - stageY) / scale;
-  const curtainStart = Math.max(460, CURTAIN_APERTURE_TOP - viewportBottom + 50);
-  const dim = 1 - smooth(curtainStart - 310, curtainStart + 30, u);
-  const intensity = brightness * lerp(beam.intensity, 1, e) * dim;
+  const intensity = brightness * lerp(beam.intensity, 1, e);
   const vx = stageX + pose.x * scale, vy = stageY + pose.y * scale;
 
   // Crossfade uncut light layers around the same moving centre in both directions.
   const w2 = smooth(.35, .85, e);
   lightPng.style.transform = `translate(${vx - 807.5}px, ${vy - 850.3}px) scale(${scale * pose.size})`;
   lightPng.style.opacity = intensity * (1 - w2);
-  const soft = `${Math.round(beamBlur)}px`; if (soft !== lastSoft) { lightPng.style.setProperty('--defocus', soft); lastSoft = soft; }
+  const soft = Math.round(beamBlur);
+  if (soft !== lastSoft) {
+    // Identical copies under complementary masks equal one unmasked copy at zero blur.
+    lightPng.classList.toggle('no-defocus', soft === 0);
+    lightPng.style.setProperty('--defocus', `${soft}px`);
+    lastSoft = soft;
+  }
   light2.style.transform = `translate(${vx - 1209}px, ${vy - 1209}px) scale(${scale * pose.size / STATE2.size})`;
   light2.style.opacity = w2 * intensity;
 
@@ -175,10 +186,9 @@ function render(time) {
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
   const introLag = reducedMotion.matches ? 0 : 82 * smooth(160, curtainStart, u);
   intro.style.transform = `translateY(${introLag}px)`;
-  intro.style.opacity = smooth(.55, 1, e) * (1 - smooth(curtainStart - 190, curtainStart + 30, u));
+  intro.style.opacity = smooth(.55, 1, e);
   curtain.style.opacity = curtainReady ? smooth(curtainStart, curtainStart + 150, u) : 0;
-  const shoreOn = u > U_SHORE - 982 - 200;
-  if (shore.classList.contains('playing') !== shoreOn) { shore.classList.toggle('playing', shoreOn); shoreFx[shoreOn && !reducedMotion.matches ? 'unpauseAnimations' : 'pauseAnimations'](); }
+  if (phase === 'state2' && u >= titleExit) return;
 
   // Light in title-local coordinates (content y = viewport y + u).
   const Lloc = { x: TITLE_ORIGIN.x + (pose.x - T.x) / T.s, y: TITLE_ORIGIN.y + (pose.y + u - T.y) / T.s };
@@ -187,12 +197,23 @@ function render(time) {
   redMark.setAttribute('opacity', redReveal.toFixed(4));
   const field = `translate(${Lloc.x} ${Lloc.y}) scale(${sizeLocal * K}) translate(-344.5 -344.5)`;
   illumination.setAttribute('transform', field); illumination.setAttribute('opacity', brightness);
-  rimField.setAttribute('transform', field); coreField.setAttribute('transform', field);
+  rimField.setAttribute('transform', field);
+  // Restore the original opacity falloff on the moving beam's sharp lettering.
+  // Release it during the grow so the expanded state's type keeps its own contrast.
+  if (e < 1) {
+    textDepthField.setAttribute('transform', field);
+    textDepthBypass.setAttribute('opacity', e.toFixed(4));
+    if (!letteringDepth.hasAttribute('mask')) letteringDepth.setAttribute('mask', 'url(#text-depth-visibility)');
+  } else if (letteringDepth.hasAttribute('mask')) {
+    letteringDepth.removeAttribute('mask');
+  }
   rimLettering.style.opacity = RIM_OPACITY * (1 - redReveal) * brightness;
   const r = (460 + beamBlur * .75).toFixed(2);
   outerColorField.setAttribute('r', r); lowerColorField.setAttribute('r', r);
 
   // Per-glyph shadows: designed resting offset, plus projection away from the live light.
+  if (phase === 'state2' && parkedShadows) return;
+  parkedShadows = phase === 'state2';
   const sh = { dx: lerp(SHADOW1.dx, SHADOW2.dx, e), dy: lerp(SHADOW1.dy, SHADOW2.dy, e), s: lerp(SHADOW1.s, SHADOW2.s, e), blur: lerp(SHADOW1.blur, SHADOW2.blur, e) };
   shadowGroup.setAttribute('transform', `translate(${TITLE_ORIGIN.x + sh.dx} ${TITLE_ORIGIN.y + sh.dy}) scale(${sh.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
   const restLoc = inState1 ? origin : { x: TITLE_ORIGIN.x + (STATE2.x - TITLE2.x) / TITLE2.s, y: TITLE_ORIGIN.y + (STATE2.y - TITLE2.y) / TITLE2.s };
@@ -246,7 +267,7 @@ function tick(time) {
   if (redReveal !== redRevealGoal) busy = true;
   if (busy) wake();
 }
-function wake() { if (!frame) frame = requestAnimationFrame(tick); }
+function wake() { if (!frame && !document.hidden) frame = requestAnimationFrame(tick); }
 function finishEntrance() { entering = false; aperture = brightness = 1; focusBlur = 0; }
 
 // ---------- state 1 ⇄ state 2 ----------
@@ -316,10 +337,16 @@ function resize() {
   // Parked light must cover every viewport corner (keep them inside 93% of the radius).
   const v = viewBounds(), far = Math.max(...[[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]].map(([x, y]) => Math.hypot(x - STATE2.x, y - STATE2.y)));
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
+  curtainStart = Math.max(460, CURTAIN_APERTURE_TOP - v.y1 + 50);
+  const lightRadius = 307.5 * state2Size;
+  lightExitLift = Math.max(0, STATE2.y + lightRadius * .94 - v.y0 - PARALLAX * curtainStart);
+  titleExit = 880 - v.y0;
   if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, U_MAX);
   wake();
 }
 addEventListener('resize', resize);
+document.addEventListener('visibilitychange', wake);
+reducedMotion.addEventListener('change', wake);
 resize();
 
 // ---------- prototype switch ----------
@@ -329,7 +356,8 @@ if (new URLSearchParams(location.search).has('record')) document.documentElement
 if (entering) { entrancePlan = createEntrancePlan(); Object.assign(light, entrancePlan.sample(0)); }
 render(0);
 const fontsReady = document.fonts ? Promise.all([document.fonts.load('184px AaRuiYaTi', '境缘'), document.fonts.load('600 32px "Noto Serif SC"', '台')]).catch(() => {}) : Promise.resolve();
-Promise.race([Promise.all([fontsReady, ...[...document.images].map(i => i.decode().catch(() => {}))]), new Promise(r => setTimeout(r, 2500))])
+const openingLightReady = lightPng.querySelector('img').decode().catch(() => {});
+Promise.race([Promise.all([fontsReady, openingLightReady]), new Promise(r => setTimeout(r, 2500))])
   .then(() => { started = true; entranceStart = null; if (window.scrollY) window.scrollTo(0, 0); wake(); });
 // Test hook (used by the comparison recorder; harmless otherwise).
 window.__stage = { get phase() { return phase; }, get u() { return u; }, get redReveal() { return redReveal; }, get light() { return { ...light }; }, get entering() { return entering; } };

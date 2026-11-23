@@ -26,6 +26,8 @@ body { overscroll-behavior-y: auto; }
 .light-png img { position: absolute; left: 200px; top: 200px; width: 815.5px; height: 858px; display: block; }
 /* Existing focused/defocused split of the lower half (circle-relative 17.6% → 96.5%). */
 .light-png .tex-clear { -webkit-mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); }
+.light-png.no-defocus .tex-clear { -webkit-mask-image: none; mask-image: none; }
+.light-png.no-defocus .tex-soft { display: none; }
 .light-png .tex-soft { filter: blur(var(--defocus)); -webkit-mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); }
 /* Both light layers share one centre and scale during the handoff. The CSS field
    extends past the viewport edges, so it needs no crop mask or large blur filter. */
@@ -62,18 +64,14 @@ body { overscroll-behavior-y: auto; }
 .shore-city { position: absolute; left: 0; top: 0; width: 1821.294px; height: 3236.135px; transform-origin: 0 0;
   transform: translate(756px, 491px) scale(var(--city-scale, 1)) translate(-756px, -491px) matrix(.9986, .0538, -.0538, .9986, -189.944, -1026);
   background: url('assets/shore-city.webp') center bottom / 100% 100% no-repeat; }
-.shore-title, .shore-title .ripple { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; }
+.shore-title { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; }
 .shore-title .shore-mask, .shore-title .shore-pool, .shore-title .shore-english { position: absolute; }
-/* Figma "Texture" glass on the two pools: noise displacement (100×30 noise, radius 40→21.5→40,
-   5s A–B–A) limited to each pool's soft region, applied in Figma's layer order. */
-.shore.playing .ripple-a { filter: url(#ripple-a); }
-.shore.playing .ripple-b { filter: url(#ripple-b); }
-.shore-fx { position: absolute; width: 0; height: 0; }
+@media (pointer: coarse) { .intro { filter: none; } }
 .shore-mask { overflow: visible; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 .shore-mask.dui { left: 642.256px; top: 319.068px; width: 126.744px; height: 318.639px; -webkit-mask-image: url('assets/shore-dui-mask.svg'); mask-image: url('assets/shore-dui-mask.svg'); }
 .shore-mask.an { left: 701.264px; top: 422.466px; width: 161.791px; height: 342.408px; -webkit-mask-image: url('assets/shore-an-mask.svg'); mask-image: url('assets/shore-an-mask.svg'); }
 .shore-mask .fill { position: absolute; display: block; max-width: none; }
-.dui-base, .dui-move { left: -14.36px; top: -201.82px; width: 274.578px; height: 411.867px; }
+.dui-base { left: -14.36px; top: -201.82px; width: 274.578px; height: 411.867px; }
 .dui-mirror { left: -14.36px; top: 210.046px; width: 274.578px; height: 411.867px; }
 .an-base { left: -10.194px; top: -255.226px; width: 412.59px; height: 618.885px; filter: blur(.85px); }
 /* Figma's native render shows one orange layer (fill × mask gradient), not an additive double,
@@ -84,17 +82,7 @@ body { overscroll-behavior-y: auto; }
 .shore-pool { transform-origin: 0 0; transform: rotate(.93deg); background: radial-gradient(closest-side, rgb(0 0 0 / .8), transparent 110%); opacity: .1; filter: blur(21.3px); }
 .pool-a { left: 631.512px; top: 436.09px; width: 153.584px; height: 155.147px; }
 .pool-b { left: 695.575px; top: 569.278px; width: 187.45px; height: 95.492px; }
-/* Figma timeline (5s A–B–A): first half cubic-bezier(.5,0,.5,1), second half ease-in-out. */
-@keyframes dui-water { 0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
-  50% { transform: translate(-30.5488px, 127.1684px); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0); } }
-@keyframes dui-water-mirror { 0% { transform: translate(0, 0) scaleY(-1); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
-  50% { transform: translate(-30.5488px, 127.1684px) scaleY(-1); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0) scaleY(-1); } }
-@keyframes an-water { 0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
-  50% { transform: translate(-12.7879px, 25.5758px); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0); } }
 .dui-mirror { transform: scaleY(-1); }
-.shore.playing .dui-move { animation: dui-water 5s infinite; }
-.shore.playing .dui-mirror { animation: dui-water-mirror 5s infinite; }
-.shore.playing .an-move { animation: an-water 5s infinite; }
 .shore-date { position: absolute; left: 692.001px; top: 226px; width: 127px; margin: 0; text-align: right; white-space: nowrap; color: #fff; opacity: .75;
   font: 600 16px/19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, sans-serif; text-shadow: 0 1.705px 21.309px #000; }
 .shore-button { position: absolute; display: flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 100px; font: 600 16px/normal Inter, sans-serif; cursor: pointer; white-space: nowrap; }
@@ -102,5 +90,3 @@ body { overscroll-behavior-y: auto; }
 .shore-button.explore { left: 786px; top: 696px; width: 99px; height: 46px; border: 1px solid #e62f0c; background: rgb(11 18 51 / .4); color: #e62f0c;
   -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); box-shadow: 0 4px 12px -2px rgb(0 0 0 / .2); }
 .shore-button:focus-visible { outline: 1px solid #e62f0c; outline-offset: 5px; }
-
-@media (prefers-reduced-motion: reduce) { .shore.playing .dui-move, .shore.playing .dui-mirror, .shore.playing .an-move { animation: none; } }
