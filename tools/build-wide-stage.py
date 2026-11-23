@@ -2,7 +2,7 @@
 """Generate stage/wide/index.html (widescreen redesign prototype).
 
 Lettering masks reuse the gradient fields of stage/index.html at commit 25c8682
-(illumination, text depth, upper/lower weights, rim reveal) so the beam's reveal,
+(illumination, upper/lower weights, rim reveal) so the beam's reveal,
 rim and red-state behaviour match the existing implementation. Geometry comes from
 Figma frames 154:238 (state 1), 191:34 (state 2), 195:341 (red) and 192:168 (对岸).
 Run from the repository root:  python3 tools/build-wide-stage.py
@@ -34,25 +34,23 @@ def tighten_rim(gradient):
 
 
 fields = tighten_rim(grab('rim-reveal-ramp', 'radialGradient'))
-fields += grab('text-depth-ramp', 'radialGradient')
 fields += ''.join(grab(i, 'radialGradient') for i in ['outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
 fields += ''.join(grab(i, 'linearGradient') for i in ['upper-field-weight', 'lower-field-weight'])
-intro_ink = grab('intro-ink', 'filter')
 
 # Glyph slots (local = state-1 coordinates) from the existing stage, plus Figma colours.
-#        key       text      x    baseline  size    slot(x,y,w,h)                                      ink (154:238)            shadow fill (191:109)       red (195:341)
+#        key       text      x    baseline  size    slot(x,y,w,h)    shadow fill (191:109)       red (195:341)
 W = [
-    ('jing',    '境',      613, 450.016, 184,    (616.223633, 288.911987, 164.304688, 193.375977), 'rgb(62,20,14)',        'rgba(62,20,14,.8)',  '#e62f0c'),
-    ('chinese', 'Chinese', 796, 355.2051, 30.525, (793.526367, 327.373352, 114.767578, 32.939209),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
-    ('drama',   'Drama',   816, 391.2051, 30.525, (814.411133, 363.587036, 97.939453, 32.572937),   'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
-    ('society', 'Society', 810, 427.2051, 30.525, (807.526367, 399.403931, 104.647461, 38.586365),  'rgba(92,31,23,.6)',    'rgba(92,31,23,.6)',  '#b02408'),
-    ('at',      'At',      622, 522.2051, 30.525, (618.305664, 494.587036, 35.650391, 32.664551),   'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408'),
-    ('cornell', 'Cornell', 622, 558.2051, 30.525, (619.526367, 530.373413, 103.360352, 32.939209),  'rgba(64,16,10,.6)',    'rgba(64,16,10,.6)',  '#b02408'),
-    ('yuan',    '缘',      729, 620.016, 184,    (737.192383, 459.463989, 157.496094, 191.536011), 'rgb(51,14,9)',         'rgba(51,14,9,.75)',  '#e62f0c'),
+    ('jing',    '境',      613, 450.016, 184,    (616.223633, 288.911987, 164.304688, 193.375977), 'rgba(62,20,14,.8)',  '#e62f0c'),
+    ('chinese', 'Chinese', 796, 355.2051, 30.525, (793.526367, 327.373352, 114.767578, 32.939209),  'rgba(92,31,23,.6)',  '#b02408'),
+    ('drama',   'Drama',   816, 391.2051, 30.525, (814.411133, 363.587036, 97.939453, 32.572937),   'rgba(92,31,23,.6)',  '#b02408'),
+    ('society', 'Society', 810, 427.2051, 30.525, (807.526367, 399.403931, 104.647461, 38.586365),  'rgba(92,31,23,.6)',  '#b02408'),
+    ('at',      'At',      622, 522.2051, 30.525, (618.305664, 494.587036, 35.650391, 32.664551),   'rgba(64,16,10,.6)',  '#b02408'),
+    ('cornell', 'Cornell', 622, 558.2051, 30.525, (619.526367, 530.373413, 103.360352, 32.939209),  'rgba(64,16,10,.6)',  '#b02408'),
+    ('yuan',    '缘',      729, 620.016, 184,    (737.192383, 459.463989, 157.496094, 191.536011), 'rgba(51,14,9,.75)',  '#e62f0c'),
 ]
 
 
-defs = [intro_ink, fields]
+defs = [fields]
 # Shared live AaRuiYaTi glyphs for the two reveals and their shadows.
 for k, t, x, y, s, slot, *_ in W:
     defs.append(f'<text id="word-{k}" class="title-word" x="{x}" y="{y}" font-size="{s}">{t}</text>')
@@ -69,13 +67,20 @@ defs.append('''<g id="illumination" opacity="0" style="isolation:isolate"><g mas
 <mask id="light-outside" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:luminance"><rect x="-3000" y="-3000" width="8000" height="8000" fill="white"/><use href="#illumination" filter="url(#coverage-black)"/></mask>
 <g id="rim-light-field"><rect x="-200" y="-200" width="1089" height="1089" fill="url(#rim-reveal-ramp)"/></g>
 <mask id="rim-light-visibility" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000" style="mask-type:alpha"><use href="#rim-light-field"/></mask>
-<g id="text-depth-field"><rect x="-5.5" y="-5.5" width="700" height="700" fill="url(#text-depth-ramp)"/></g>
-<mask id="text-depth-visibility" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use href="#text-depth-field"/><rect id="text-depth-bypass" x="590" y="270" width="350" height="400" fill="white" opacity="0"/></mask>''')
+<!-- The beam radius is 244.5 in field coordinates. Feather only outside it. -->
+<radialGradient id="lettering-reveal-ramp" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="270">
+<stop offset="0" stop-color="white"/><stop offset="90.555556%" stop-color="white"/><stop offset="93%" stop-color="white" stop-opacity=".88"/><stop offset="95.3%" stop-color="white" stop-opacity=".5"/><stop offset="97.7%" stop-color="white" stop-opacity=".12"/><stop offset="100%" stop-color="white" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="lettering-ink" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="244.5">
+<stop offset="0" stop-color="#330e09"/><stop offset="50%" stop-color="#3e140e"/><stop offset="100%" stop-color="#501912"/>
+</radialGradient>
+<g id="lettering-light-field" opacity="0"><rect x="74.5" y="74.5" width="540" height="540" fill="url(#lettering-reveal-ramp)"/></g>
+<mask id="lettering-light-visibility" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use href="#lettering-light-field"/></mask>''')
 
 body = []
 # 1. Per-word shadows (Figma Group 56 / 55), lit only by the beam.
 body.append('<g class="shadow-layer" mask="url(#light-inside)"><g class="shadow-group" opacity=".5">')
-for k, t, x, y, s, slot, ink, sh, red in W:
+for k, t, x, y, s, slot, sh, red in W:
     body.append(f'<g class="word-shadow" data-word="{k}" filter="url(#shadow-blur-{k})"><use href="#word-{k}" style="fill:{sh}"/></g>')
 body.append('</g></g>')
 # 2. Peripheral rim copy (existing behaviour: faint strokes ahead of the main beam).
@@ -83,16 +88,16 @@ body.append('<g class="rim-lettering" mask="url(#rim-light-visibility)">')
 for k, *_ in W:
     body.append(f'<use href="#word-{k}" fill="#ff2b00"/>')
 body.append('</g>')
-# 3. Sharp lettering with independent illumination and inward opacity falloff.
-body.append('<g class="lit-lettering" mask="url(#light-inside)"><g class="lettering-depth" mask="url(#text-depth-visibility)">')
-for k, t, x, y, s, slot, ink, sh, red in W:
+# 3. Sharp lettering shaded with opaque ink colors inside the beam.
+body.append('<g class="lit-lettering" fill="url(#lettering-ink)" mask="url(#lettering-light-visibility)">')
+for k, t, x, y, s, slot, sh, red in W:
     bx, by, bw, bh = slot
     body.append(f'<g class="glyph-field" data-word="{k}"><rect class="glyph-slot" x="{bx}" y="{by}" width="{bw}" height="{bh}" fill="none"/>'
-                f'<use href="#word-{k}" style="fill:{ink}"/></g>')
-body.append('</g></g>')
+                f'<use href="#word-{k}"/></g>')
+body.append('</g>')
 # 4. Whole-wordmark sharp red state (frame 195:341), outside the light only.
 body.append('<g class="red-wordmark" opacity="0" mask="url(#light-outside)">')
-for k, t, x, y, s, slot, ink, sh, red in W:
+for k, t, x, y, s, slot, sh, red in W:
     body.append(f'<use href="#word-{k}" style="fill:{red}"/>')
 body.append('</g>')
 

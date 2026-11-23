@@ -10,8 +10,7 @@ const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), conte
 const lightPng = $('.light-png'), light2 = $('.light2-css');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field');
-const letteringDepth = $('.lettering-depth'), textDepthField = $('#text-depth-field');
-const textDepthBypass = $('#text-depth-bypass');
+const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering-ink');
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
 const rimLettering = $('.rim-lettering'), redMark = $('.red-wordmark'), shadowGroup = $('.shadow-group');
 const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore');
@@ -36,8 +35,10 @@ const TITLE2 = { x: 524, y: 217.843, s: 284.037 / 184 }; // 191:72 relative to 1
 const SHADOW1 = { dx: 0, dy: 23, s: 1, blur: 12 };
 const SHADOW2 = { dx: 9.069, dy: 51.926, s: 0.98471, blur: 20 / TITLE2.s };
 const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussian σ, from the light fit (251.5 → 106)
-const U_SHORE = 2830, U_MAX = 2830;              // The Other Shore starts under frame 2 (2830 tall)
-const PARALLAX = .88;                           // Light still trails the title.
+const U_SHORE = 2830;                           // The Other Shore follows the curtain scene.
+const PARALLAX = .72;
+const INTRO_LAG = 82;
+const MIN_LIGHT_EXIT_DISTANCE = 840;
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
@@ -63,7 +64,7 @@ let anim = null;                 // { from, to, start, src }
 let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
-let curtainStart = 0, lightExitLift = 0, titleExit = 0;
+let curtainStart = 0, lightExitLift = 0, titleExit = 0, copyExit = 0, scrollEnd = U_SHORE;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -144,9 +145,8 @@ function lerpPose(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t)
 function currentPose() {
   if (phase === 'state1') return state1Pose();
   if (phase === 'state2') {
-    // Initial parallax gives way to a faster lift into the curtain. At its
-    // reveal only the light's own soft lower edge can still be on screen.
-    const lift = PARALLAX * u + lightExitLift * smooth(curtainStart * .53, curtainStart, u);
+    // Let the copy clear the viewport before easing the beam the rest of the way up.
+    const lift = PARALLAX * u + lightExitLift * smooth(copyExit, curtainStart, u);
     return { x: STATE2.x, y: STATE2.y - lift, size: state2Size };
   }
   const e = smootherstep(grow);
@@ -184,7 +184,7 @@ function render(time) {
   content.style.transform = `translateY(${-u}px)`;
   const T = titleTransform(e);
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  const introLag = reducedMotion.matches ? 0 : 82 * smooth(160, curtainStart, u);
+  const introLag = reducedMotion.matches ? 0 : INTRO_LAG * smooth(160, titleExit, u);
   intro.style.transform = `translateY(${introLag}px)`;
   intro.style.opacity = smooth(.55, 1, e);
   curtain.style.opacity = curtainReady ? smooth(curtainStart, curtainStart + 150, u) : 0;
@@ -198,15 +198,9 @@ function render(time) {
   const field = `translate(${Lloc.x} ${Lloc.y}) scale(${sizeLocal * K}) translate(-344.5 -344.5)`;
   illumination.setAttribute('transform', field); illumination.setAttribute('opacity', brightness);
   rimField.setAttribute('transform', field);
-  // Restore the original opacity falloff on the moving beam's sharp lettering.
-  // Release it during the grow so the expanded state's type keeps its own contrast.
-  if (e < 1) {
-    textDepthField.setAttribute('transform', field);
-    textDepthBypass.setAttribute('opacity', e.toFixed(4));
-    if (!letteringDepth.hasAttribute('mask')) letteringDepth.setAttribute('mask', 'url(#text-depth-visibility)');
-  } else if (letteringDepth.hasAttribute('mask')) {
-    letteringDepth.removeAttribute('mask');
-  }
+  letteringLight.setAttribute('transform', field);
+  letteringLight.setAttribute('opacity', brightness);
+  letteringInk.setAttribute('gradientTransform', field);
   rimLettering.style.opacity = RIM_OPACITY * (1 - redReveal) * brightness;
   const r = (460 + beamBlur * .75).toFixed(2);
   outerColorField.setAttribute('r', r); lowerColorField.setAttribute('r', r);
@@ -315,7 +309,7 @@ addEventListener('keydown', ev => {
 addEventListener('scroll', () => {
   if (phase === 'state1' && window.scrollY > 0 && started) { startGrow(); u = 0; return; }   // scrollbar / other inputs
   if (phase === 'state1' || phase === 'grow' || phase === 'shrink') { if (window.scrollY !== 0) window.scrollTo(0, 0); u = 0; return; }
-  scrollTarget = clamp(window.scrollY / scale, 0, U_MAX); wake();
+  scrollTarget = clamp(window.scrollY / scale, 0, scrollEnd); wake();
 }, { passive: true });
 
 // ---------- pointer (state 1 only; parked in state 2) ----------
@@ -331,17 +325,24 @@ function resize() {
   scale = Math.min(vw / 1512, vh / 982);
   stageX = (vw - 1512 * scale) / 2; stageY = (vh - 982 * scale) / 2;
   stageEl.style.transform = `translate(${stageX}px, ${stageY}px) scale(${scale})`;
-  journey.style.height = `${vh + U_MAX * scale}px`;
   // Let The Other Shore's photograph cover wider desktop ratios.
   shore.style.setProperty('--city-scale', Math.max(1, (vw / scale) / 1640).toFixed(3));
   // Parked light must cover every viewport corner (keep them inside 93% of the radius).
   const v = viewBounds(), far = Math.max(...[[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]].map(([x, y]) => Math.hypot(x - STATE2.x, y - STATE2.y)));
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
-  curtainStart = Math.max(460, CURTAIN_APERTURE_TOP - v.y1 + 50);
   const lightRadius = 307.5 * state2Size;
-  lightExitLift = Math.max(0, STATE2.y + lightRadius * .94 - v.y0 - PARALLAX * curtainStart);
   titleExit = 880 - v.y0;
-  if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, U_MAX);
+  copyExit = intro.offsetTop + intro.offsetHeight + INTRO_LAG - v.y0;
+  const fullLightLift = STATE2.y + lightRadius - v.y0;
+  const releaseDistance = Math.max(MIN_LIGHT_EXIT_DISTANCE, (fullLightLift - PARALLAX * copyExit) / 1.65);
+  const apertureEntry = CURTAIN_APERTURE_TOP - v.y1 + 50;
+  curtainStart = Math.max(apertureEntry, copyExit + releaseDistance);
+  lightExitLift = Math.max(0, fullLightLift - PARALLAX * curtainStart);
+  const curtainDelay = curtainStart - apertureEntry;
+  content.style.setProperty('--curtain-delay', `${curtainDelay}px`);
+  scrollEnd = U_SHORE + curtainDelay;
+  journey.style.height = `${vh + scrollEnd * scale}px`;
+  if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, scrollEnd);
   wake();
 }
 addEventListener('resize', resize);

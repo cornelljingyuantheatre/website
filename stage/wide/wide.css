@@ -45,12 +45,12 @@ body { overscroll-behavior-y: auto; }
 .content { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; will-change: transform; }
 .title-field { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; overflow: visible; }
 .title-word { font-family: AaRuiYaTi, serif; }  /* no own fill: <use> instances colour it; alpha masks ignore colour */
-.intro { position: absolute; left: 43px; top: 1010px; width: 1427px; margin: 0; text-align: center; color: rgb(0 0 0 / .9);
-  font: 600 32px/46px 'Noto Serif SC', serif; filter: url(#intro-ink); opacity: 0; }
+.intro { position: absolute; left: 43px; top: 1010px; width: 1427px; margin: 0; text-align: center; color: #3e140e;
+  font: 600 32px/46px 'Noto Serif SC', serif; opacity: 0; }
 .intro span { display: block; }
 /* Curtain: photo inside the aperture (alpha mask 206:66), exterior-only glow overlay above it.
    The overlay's interior is fully transparent, so the photo receives no glow or blur. */
-.curtain { position: absolute; left: 108px; top: 1689px; width: 1296.44px; height: 842px; opacity: 0; }
+.curtain { position: absolute; left: 108px; top: calc(1689px + var(--curtain-delay, 0px)); width: 1296.44px; height: 842px; opacity: 0; }
 .curtain-photo { position: absolute; left: 210.928px; top: 105.464px; width: 836.929px; height: 630.158px;
   -webkit-mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat;
   mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat; }
@@ -58,7 +58,7 @@ body { overscroll-behavior-y: auto; }
 .curtain-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
 
 /* ---------- 对岸 The Other Shore (frame 192:168), placed directly under frame 2 ---------- */
-.shore { position: absolute; left: 0; top: 2830px; width: 1512px; height: 982px; background: #000; clip-path: inset(0 -4000px); pointer-events: auto; }
+.shore { position: absolute; left: 0; top: calc(2830px + var(--curtain-delay, 0px)); width: 1512px; height: 982px; background: #000; clip-path: inset(0 -4000px); pointer-events: auto; }
 /* Soft entry from the dark curtain section instead of a hard photo edge. */
 .shore::before { content: ''; position: absolute; left: -4000px; right: -4000px; top: 0; height: 220px; z-index: 1; background: linear-gradient(#000, rgb(0 0 0 / 0)); pointer-events: none; }
 .shore-city { position: absolute; left: 0; top: 0; width: 1821.294px; height: 3236.135px; transform-origin: 0 0;
@@ -66,7 +66,6 @@ body { overscroll-behavior-y: auto; }
   background: url('assets/shore-city.webp') center bottom / 100% 100% no-repeat; }
 .shore-title { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; }
 .shore-title .shore-mask, .shore-title .shore-pool, .shore-title .shore-english { position: absolute; }
-@media (pointer: coarse) { .intro { filter: none; } }
 .shore-mask { overflow: visible; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 .shore-mask.dui { left: 642.256px; top: 319.068px; width: 126.744px; height: 318.639px; -webkit-mask-image: url('assets/shore-dui-mask.svg'); mask-image: url('assets/shore-dui-mask.svg'); }
 .shore-mask.an { left: 701.264px; top: 422.466px; width: 161.791px; height: 342.408px; -webkit-mask-image: url('assets/shore-an-mask.svg'); mask-image: url('assets/shore-an-mask.svg'); }
