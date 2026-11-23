@@ -15,38 +15,31 @@ body { overscroll-behavior-y: auto; }
 
 /* ---------- light layer ---------- */
 .light-layer { position: absolute; inset: 0; overflow: hidden; background: #000; pointer-events: none; }
-html[data-light="css"] .light-png, html[data-light="css"] .light2-png,
-html[data-light="png"] .light-css { display: none; }
 /* Shared local frame: 815.5×858 (the native export's bounds at 1×). Red circle at (100,142.8),
    light centre (407.5,450.3). */
 .light { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
-/* A — CSS: vertical gradient circle, 10 complementary blur bands (masks sum to 1, no seams),
-   rotated amber ellipse. --gk keeps Figma's absolute progressive radius as the light grows. */
-.light-css { width: 815.5px; height: 858px; transform-origin: 407.5px 450.3px; isolation: isolate; --gk: 1; --defocus: 0; }
-.light-css .band { position: absolute; left: -300px; top: -300px; width: 1415.5px; height: 1458px; mix-blend-mode: plus-lighter;
-  --m: linear-gradient(to bottom, transparent calc((var(--prev) + 300) * 1px), #000 calc((var(--y) + 300) * 1px), transparent calc((var(--next) + 300) * 1px));
-  -webkit-mask-image: var(--m); mask-image: var(--m); }
-.light-css .band.first { --m: linear-gradient(to bottom, #000 calc((var(--y) + 300) * 1px), transparent calc((var(--next) + 300) * 1px)); }
-.light-css .band.last { --m: linear-gradient(to bottom, transparent calc((var(--prev) + 300) * 1px), #000 calc((var(--y) + 300) * 1px)); }
-.light-css .circle { position: absolute; left: 400px; top: 442.8px; width: 615px; height: 615px; border-radius: 50%;
-  background: linear-gradient(to bottom, #e40000, rgb(127 17 17 / .2));
-  filter: blur(calc((var(--s) * var(--gk) + var(--defocus) * var(--w)) * 1px)); }
-.light-css .amber { position: absolute; left: 293.538px; top: 229.85px; width: 245.124px; height: 331.457px; border-radius: 50%;
-  background: #ffb431; opacity: .9375; filter: blur(106.25px); transform: rotate(132.732deg); }
-/* B — native Figma PNG export of group 154:239 as a movable texture. Box enlarged by 400px so
+/* Native Figma PNG export of group 154:239 as a movable texture. Box enlarged by 400px so
    the soft copy's blur and the edge-blend mask fit; texture sits at (400,400). */
 .light-png { left: 0; top: 0; width: 1615.5px; height: 1658px; transform-origin: 807.5px 850.3px; isolation: isolate; --defocus: 0px; --a: 1;
-  --tm: linear-gradient(to right, #000 622.08px, rgb(0 0 0 / var(--a)) 652.6px, rgb(0 0 0 / var(--a)) 976.1px, #000 1006.6px);
-  -webkit-mask-image: var(--tm); mask-image: var(--tm); }
+  /* Hand-off to the frame-clipped state-2 export. The state-1 texture fades (to --a) only
+     inside the 191:34 frame rectangle as it appears in this box (x 622.08–1006.6, y ≥ 621.14),
+     with 30.52px feathers = the export's 120px feathers at 1/3.9317. The two layers combine
+     source-over: alpha = 1 − (1 − a)·H·V, exactly complementary to the export's H·V mask. */
+  --tmx: linear-gradient(to right, #000 622.08px, transparent 652.6px, transparent 976.1px, #000 1006.6px);
+  --tmy: linear-gradient(to bottom, #000 621.14px, rgb(0 0 0 / var(--a)) 651.66px);
+  -webkit-mask-image: var(--tmx), var(--tmy); mask-image: var(--tmx), var(--tmy); }
 .light-png .tex-surface { position: absolute; left: 200px; top: 200px; width: 1215.5px; height: 1258px; mix-blend-mode: plus-lighter; }
 .light-png img { position: absolute; left: 200px; top: 200px; width: 815.5px; height: 858px; display: block; }
 /* Existing focused/defocused split of the lower half (circle-relative 17.6% → 96.5%). */
 .light-png .tex-clear { -webkit-mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); }
 .light-png .tex-soft { filter: blur(var(--defocus)); -webkit-mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); }
-/* Native state-2 export of 191:35 (Figma clips it to the 1512-wide frame, so its side edges
-   are feathered and the state-1 texture fills in beyond them). */
+/* Native state-2 export of 191:35. Figma clips it to frame 191:34 on the top and both sides,
+   so those edges are feathered (H·V) and the state-1 texture fills in beyond them. */
 .light2-png { position: absolute; left: 0; top: 0; width: 1512px; height: 2242px; transform-origin: 729px 901px; opacity: 0; mix-blend-mode: plus-lighter; will-change: transform, opacity;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 120px, #000 calc(100% - 120px), transparent); mask-image: linear-gradient(to right, transparent, #000 120px, #000 calc(100% - 120px), transparent); }
+  --m2x: linear-gradient(to right, transparent, #000 120px, #000 calc(100% - 120px), transparent);
+  --m2y: linear-gradient(to bottom, transparent, #000 120px);
+  -webkit-mask-image: var(--m2x), var(--m2y); -webkit-mask-composite: source-in;
+  mask-image: var(--m2x), var(--m2y); mask-composite: intersect; }
 .light2-png img { display: block; width: 100%; height: 100%; }
 
 /* ---------- composition ---------- */
@@ -114,9 +107,4 @@ html[data-light="png"] .light-css { display: none; }
   -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); box-shadow: 0 4px 12px -2px rgb(0 0 0 / .2); }
 .shore-button:focus-visible { outline: 1px solid #e62f0c; outline-offset: 5px; }
 
-/* Prototype switch (A/B). Remove before shipping. */
-.proto-badge { position: fixed; left: 14px; bottom: 12px; z-index: 5; font: 500 11px/1 Inter, system-ui, sans-serif; color: rgb(255 255 255 / .55); text-decoration: none;
-  padding: 6px 9px; border: 1px solid rgb(255 255 255 / .18); border-radius: 99px; background: rgb(0 0 0 / .35); pointer-events: auto; }
-.proto-badge:hover { color: #fff; }
-html.recording .proto-badge { display: none; }
 @media (prefers-reduced-motion: reduce) { .shore.playing .dui-move, .shore.playing .dui-mirror, .shore.playing .an-move { animation: none; } }

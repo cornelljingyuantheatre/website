@@ -1,15 +1,13 @@
-// Widescreen redesign prototype. State 1 (Figma 154:238) keeps the interaction model of
+// Widescreen homepage stage. State 1 (Figma 154:238) keeps the interaction model of
 // stage/app.js at 25c8682: clockwise moving-head entrance, pointer-follow, beamAt(y)
 // size/brightness/defocus, independent entrance cues, moving illumination mask, rim reveal
 // and the whole-wordmark red state. One scroll gesture grows the scene into state 2
 // (191:34); further scrolling moves content 1:1 while the light rises with parallax, then
 // reveals the curtain photograph and The Other Shore (192:168).
-// The light renderer is the only difference between ?light=css (A) and ?light=png (B).
+// The light is the native Figma export of group 154:239 (191:35 for state 2), moved as a texture.
 const $ = s => document.querySelector(s);
-const mode = document.documentElement.dataset.light;
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
-const lightCss = $('.light-css'), lightPng = $('.light-png'), light2 = $('.light2-png');
-const lightEl = mode === 'png' ? lightPng : lightCss;
+const lightPng = $('.light-png'), light2 = $('.light2-png');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field'), coreField = $('#core-field');
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
@@ -142,7 +140,7 @@ function currentPose() {
 function titleTransform(e) { return { x: lerp(TITLE_ORIGIN.x, TITLE2.x, e), y: lerp(TITLE_ORIGIN.y, TITLE2.y, e), s: lerp(1, TITLE2.s, e) }; }
 
 // ---------- render ----------
-let lastSoft = null, lastGk = null, lastA = null;
+let lastSoft = null, lastA = null;
 function render(time) {
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
@@ -153,24 +151,14 @@ function render(time) {
   const intensity = brightness * lerp(beam.intensity, 1, e) * dim;
   const vx = stageX + pose.x * scale, vy = stageY + pose.y * scale;
 
-  // Light renderer (the only A/B difference).
-  if (mode === 'png') {
-    const w2 = smooth(.35, .85, e);
-    lightPng.style.transform = `translate(${vx - 807.5}px, ${vy - 850.3}px) scale(${scale * pose.size})`;
-    lightPng.style.opacity = intensity;
-    const soft = `${Math.round(beamBlur)}px`; if (soft !== lastSoft) { lightPng.style.setProperty('--defocus', soft); lastSoft = soft; }
-    const a = (1 - w2).toFixed(3); if (a !== lastA) { lightPng.style.setProperty('--a', a); lastA = a; }
-    light2.style.transform = `translate(${vx - 729}px, ${vy - 901}px) scale(${scale * pose.size / STATE2.size})`;
-    light2.style.opacity = w2 * intensity;
-  } else {
-    lightCss.style.transform = `translate(${vx - 407.5}px, ${vy - 450.3}px) scale(${scale * pose.size})`;
-    lightCss.style.opacity = intensity;
-    // Figma keeps the progressive blur radius absolute (100) as the light grows to 2418px.
-    const g0 = anim?.src?.size ?? restSize();
-    const gk = e === 0 ? '1' : (Math.pow(g0 / pose.size, e)).toFixed(3);
-    if (gk !== lastGk) { lightCss.style.setProperty('--gk', gk); lastGk = gk; }
-    const soft = String(Math.round(beamBlur)); if (soft !== lastSoft) { lightCss.style.setProperty('--defocus', soft); lastSoft = soft; }
-  }
+  // Light: state-1 texture, cross-faded into the native state-2 export during the grow.
+  const w2 = smooth(.35, .85, e);
+  lightPng.style.transform = `translate(${vx - 807.5}px, ${vy - 850.3}px) scale(${scale * pose.size})`;
+  lightPng.style.opacity = intensity;
+  const soft = `${Math.round(beamBlur)}px`; if (soft !== lastSoft) { lightPng.style.setProperty('--defocus', soft); lastSoft = soft; }
+  const a = (1 - w2).toFixed(3); if (a !== lastA) { lightPng.style.setProperty('--a', a); lastA = a; }
+  light2.style.transform = `translate(${vx - 729}px, ${vy - 901}px) scale(${scale * pose.size / STATE2.size})`;
+  light2.style.opacity = w2 * intensity;
 
   // Content: grows with the light (same eased driver), then scrolls 1:1.
   content.style.transform = `translateY(${-u}px)`;
@@ -319,9 +307,6 @@ addEventListener('resize', resize);
 resize();
 
 // ---------- prototype switch ----------
-const badge = $('.proto-badge');
-badge.textContent = mode === 'png' ? 'B · Figma PNG light ⇄' : 'A · CSS light ⇄';
-badge.addEventListener('click', ev => { ev.preventDefault(); const q = new URLSearchParams(location.search); q.set('light', mode === 'png' ? 'css' : 'png'); location.search = q; });
 if (new URLSearchParams(location.search).has('record')) document.documentElement.classList.add('recording');
 
 // ---------- start once fonts and images are ready (dark until then) ----------

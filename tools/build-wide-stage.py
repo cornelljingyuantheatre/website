@@ -101,24 +101,7 @@ body.append('</g>')
 title_svg = ('<svg class="title-field" viewBox="0 0 1512 982" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>'
              + ''.join(defs) + '</defs><g id="title-group">' + ''.join(body) + '</g></svg>')
 
-# Light renderers. A: CSS gradient + 10 progressive blur bands + amber light.
-# Fitted against the native export (light-154-239@2x): band blur 0 -> 60.5px (pow 1.0625)
-# from 3.21% to 67.26% of the circle height (Figma progressive radius 100), amber 106.25px
-# (Figma 251.5) at 93.75% opacity. Mean error 4.2/255.
-N, SMAX, POW = 10, 60.5, 1.0625
-top = 142.8; y0 = top + 0.0321 * 615; y1 = top + 0.6726 * 615
-ys = [y0 + (y1 - y0) * i / (N - 1) for i in range(N)]
-bands = []
-for i, yy in enumerate(ys):
-    s = SMAX * (i / (N - 1)) ** POW
-    prev = ys[i - 1] if i else -400.0
-    nxt = ys[i + 1] if i < N - 1 else 2000.0
-    frac = (yy - top) / 615
-    w = min(1, max(0, (frac - 0.176) / (0.965 - 0.176)))   # existing lower-half defocus weight
-    cls = 'band first' if i == 0 else 'band last' if i == N - 1 else 'band'
-    bands.append(f'<div class="{cls}" style="--y:{yy:.2f};--prev:{prev:.2f};--next:{nxt:.2f};--s:{s:.3f};--w:{w:.4f}"><div class="circle"></div></div>')
-light_css = '<div class="light light-css" data-node-id="154:239">' + ''.join(bands) + '<div class="amber"></div></div>'
-# B: native Figma PNG texture (state 1) with the existing clear/soft lower-half blend,
+# Light: native Figma PNG export of group 154:239 as a movable texture (state 1) with the existing clear/soft lower-half blend,
 # plus the native state-2 export (frame-clipped) blended in during the grow.
 light_png = ('<div class="light light-png" data-node-id="154:239">'
              '<div class="tex-surface tex-clear"><img src="assets/light-154-239@2x.webp" alt="" draggable="false"></div>'
@@ -162,24 +145,22 @@ shore = '''<section class="shore" data-node-id="192:168" aria-label="对岸 The 
 html = f'''<!doctype html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#000000">
-<title>境缘 · Chinese Drama Society at Cornell — widescreen prototype</title>
+<title>境缘 · Chinese Drama Society at Cornell </title>
 <link rel="preload" href="../assets/fonts/aaruiyati-title.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/noto-serif-sc-600-intro.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="wide.css">
-<script>document.documentElement.dataset.light=new URLSearchParams(location.search).get('light')==='png'?'png':'css';</script>
 </head>
 <body>
 <main class="journey"><div class="scene" tabindex="0" aria-label="境缘 · Chinese Drama Society at Cornell. Move the pointer to guide the spotlight; scroll to open the stage.">
 <h1 class="accessible">境缘 — Chinese Drama Society At Cornell</h1>
 <p class="accessible">台上之境，台下之缘。康奈尔境缘剧社是以康奈尔大学为平台的中文话剧社。我们希望通过话剧表演，为话剧爱好者提供沟通交流的机会，传播中文语言魅力，丰富校园多元文化。</p>
-<div class="light-layer" aria-hidden="true">{light_css}{light_png}</div>
+<div class="light-layer" aria-hidden="true">{light_png}</div>
 <div class="stage"><div class="content">
 {title_svg}
 {intro}
 {curtain}
 {shore}
 </div></div>
-<a class="proto-badge" href="#" aria-label="Switch light renderer"></a>
 </div></main>
 <script src="wide.js"></script>
 </body></html>

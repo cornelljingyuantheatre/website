@@ -1,12 +1,8 @@
-# Widescreen redesign prototype (local, not published)
+# Widescreen homepage stage
 
 Opened by the homepage at ≥800px (`hero.js`). Narrow screens keep `stage/index.html` unchanged.
 
-- `index.html?light=css` → **Prototype A**, CSS light (default)
-- `index.html?light=png` → **Prototype B**, native Figma PNG light
-- The pill in the lower-left corner switches between them. Remove it before shipping.
-
-Everything except the light renderer is shared: live AaRuiYaTi lettering, per-glyph shadows, masks, geometry and input.
+The lettering is live AaRuiYaTi text with per-glyph shadows and masks. The light is Figma's own render, moved as a texture (see below).
 
 ## Sources
 
@@ -28,14 +24,13 @@ State-1 behaviour comes from `stage/app.js` at `25c8682`. The following are unch
 
 The fields are scaled by 307.5/244.5 for the larger new light.
 
-## Light renderers
+## Light
 
-- **A (CSS):** a vertical gradient circle plus 10 complementary blur bands. The band masks sum to 1, so there are no seams. Blur runs 0 → 60.5px between 3.2% and 67.3% of the circle height, which is Figma's progressive radius 100. The amber ellipse uses blur(106px) for Figma's 251.5. These values were fitted to the native export, mean error 4.2/255.
-  - Remaining mismatch: Figma softens the upper shoulders of the circle faster sideways than a purely height-based blur can.
-  - The defocus while the light grows uses `--gk`, so the progressive radius stays absolute as it does in frame 2.
-- **B (PNG):** the `154:239` export at 2×.
+- The light is the native Figma export of `154:239` at 2×.
   - It carries the same clear/soft lower-half defocus blend as the current stage.
-  - During the grow it blends into the `191:35` export. Figma clips that export to the 1512-wide frame, so beyond the frame edges the state-1 texture fills in. The two use complementary masks.
+  - During the grow it cross-fades into the `191:35` export. Figma clips that export to the 1512-wide frame, so beyond the frame edges the state-1 texture fills in. The two use complementary masks.
+  - Re-exporting `191:35` without the frame clip would remove that fill-in on very wide screens.
+- A CSS-only light (a gradient circle with 10 blur bands) was prototyped first and compared side by side. It was dropped because it drifted further from Figma (2.73 vs 0.72 mean error /255 in state 1) and redraws 11 large blurred layers each frame during the grow. It remains in commit `b62631d`.
 
 ## Sequence
 
