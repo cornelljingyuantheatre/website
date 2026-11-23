@@ -1,0 +1,110 @@
+/* Widescreen redesign prototype (Figma 154:238 → 191:34 → 195:341 → 192:168).
+   Design units are Figma pixels; the composition is a 1512-wide stage scaled to fit,
+   while the light lives in a full-viewport layer behind it. */
+@font-face { font-family: AaRuiYaTi; src: url('../assets/fonts/aaruiyati-title.woff2') format('woff2'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'Noto Serif SC'; src: url('assets/fonts/noto-serif-sc-600-intro.woff2') format('woff2'); font-weight: 600; font-display: block; }
+@font-face { font-family: Inter; src: url('assets/fonts/inter-latin-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+:root { color-scheme: dark; background: #000; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; overflow-x: clip; }
+body { overscroll-behavior-y: auto; }
+.accessible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.journey { position: relative; height: 100vh; }
+.scene { position: sticky; top: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; outline: none; touch-action: pan-y; }
+.scene:focus-visible { outline: 1px solid #6d1414; outline-offset: -6px; }
+
+/* ---------- light layer ---------- */
+.light-layer { position: absolute; inset: 0; overflow: hidden; background: #000; pointer-events: none; }
+/* Shared local frame: 815.5×858 (the native export's bounds at 1×). Red circle at (100,142.8),
+   light centre (407.5,450.3). */
+.light { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
+/* Native Figma PNG export of group 154:239 as a movable texture. Box enlarged by 400px so
+   the soft copy's blur and the edge-blend mask fit; texture sits at (400,400). */
+.light-png { left: 0; top: 0; width: 1615.5px; height: 1658px; transform-origin: 807.5px 850.3px; isolation: isolate; --defocus: 0px; --a: 1;
+  /* Hand-off to the frame-clipped state-2 export. The state-1 texture fades (to --a) only
+     inside the 191:34 frame rectangle as it appears in this box (x 622.08–1006.6, y ≥ 621.14),
+     with 30.52px feathers = the export's 120px feathers at 1/3.9317. The two layers combine
+     source-over: alpha = 1 − (1 − a)·H·V, exactly complementary to the export's H·V mask. */
+  --tmx: linear-gradient(to right, #000 622.08px, transparent 652.6px, transparent 976.1px, #000 1006.6px);
+  --tmy: linear-gradient(to bottom, #000 621.14px, rgb(0 0 0 / var(--a)) 651.66px);
+  -webkit-mask-image: var(--tmx), var(--tmy); mask-image: var(--tmx), var(--tmy); }
+.light-png .tex-surface { position: absolute; left: 200px; top: 200px; width: 1215.5px; height: 1258px; mix-blend-mode: plus-lighter; }
+.light-png img { position: absolute; left: 200px; top: 200px; width: 815.5px; height: 858px; display: block; }
+/* Existing focused/defocused split of the lower half (circle-relative 17.6% → 96.5%). */
+.light-png .tex-clear { -webkit-mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); }
+.light-png .tex-soft { filter: blur(var(--defocus)); -webkit-mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); }
+/* Native state-2 export of 191:35. Figma clips it to frame 191:34 on the top and both sides,
+   so those edges are feathered (H·V) and the state-1 texture fills in beyond them. */
+.light2-png { position: absolute; left: 0; top: 0; width: 1512px; height: 2242px; transform-origin: 729px 901px; opacity: 0; mix-blend-mode: plus-lighter; will-change: transform, opacity;
+  --m2x: linear-gradient(to right, transparent, #000 120px, #000 calc(100% - 120px), transparent);
+  --m2y: linear-gradient(to bottom, transparent, #000 120px);
+  -webkit-mask-image: var(--m2x), var(--m2y); -webkit-mask-composite: source-in;
+  mask-image: var(--m2x), var(--m2y); mask-composite: intersect; }
+.light2-png img { display: block; width: 100%; height: 100%; }
+
+/* ---------- composition ---------- */
+.stage { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; pointer-events: none; }
+.content { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; will-change: transform; }
+.title-field { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; overflow: visible; }
+.title-word { font-family: AaRuiYaTi, serif; }  /* no own fill: <use> instances colour it; alpha masks ignore colour */
+.intro { position: absolute; left: 43px; top: 1010px; width: 1427px; margin: 0; text-align: center; color: rgb(0 0 0 / .9);
+  font: 600 32px/46px 'Noto Serif SC', serif; filter: url(#intro-ink); opacity: 0; }
+.intro span { display: block; }
+/* Curtain: photo inside the aperture (alpha mask 206:66), exterior-only glow overlay above it.
+   The overlay's interior is fully transparent, so the photo receives no glow or blur. */
+.curtain { position: absolute; left: 108px; top: 1689px; width: 1296.44px; height: 842px; opacity: 0; }
+.curtain-photo { position: absolute; left: 210.928px; top: 105.464px; width: 836.929px; height: 630.158px; opacity: var(--photo, 0);
+  -webkit-mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat;
+  mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat; }
+.curtain-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.curtain-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+
+/* ---------- 对岸 The Other Shore (frame 192:168), placed directly under frame 2 ---------- */
+.shore { position: absolute; left: 0; top: 2830px; width: 1512px; height: 982px; background: #000; clip-path: inset(0 -4000px); pointer-events: auto; }
+/* Soft entry from the dark curtain section instead of a hard photo edge. */
+.shore::before { content: ''; position: absolute; left: -4000px; right: -4000px; top: 0; height: 220px; z-index: 1; background: linear-gradient(#000, rgb(0 0 0 / 0)); pointer-events: none; }
+.shore-city { position: absolute; left: 0; top: 0; width: 1821.294px; height: 3236.135px; transform-origin: 0 0;
+  transform: translate(756px, 491px) scale(var(--city-scale, 1)) translate(-756px, -491px) matrix(.9986, .0538, -.0538, .9986, -189.944, -1026);
+  background: url('assets/shore-city.webp') center bottom / 100% 100% no-repeat; }
+.shore-title, .shore-title .ripple { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; }
+.shore-title .shore-mask, .shore-title .shore-pool, .shore-title .shore-english { position: absolute; }
+/* Figma "Texture" glass on the two pools: noise displacement (100×30 noise, radius 40→21.5→40,
+   5s A–B–A) limited to each pool's soft region, applied in Figma's layer order. */
+.shore.playing .ripple-a { filter: url(#ripple-a); }
+.shore.playing .ripple-b { filter: url(#ripple-b); }
+.shore-fx { position: absolute; width: 0; height: 0; }
+.shore-mask { overflow: visible; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.shore-mask.dui { left: 642.256px; top: 319.068px; width: 126.744px; height: 318.639px; -webkit-mask-image: url('assets/shore-dui-mask.svg'); mask-image: url('assets/shore-dui-mask.svg'); }
+.shore-mask.an { left: 701.264px; top: 422.466px; width: 161.791px; height: 342.408px; -webkit-mask-image: url('assets/shore-an-mask.svg'); mask-image: url('assets/shore-an-mask.svg'); }
+.shore-mask .fill { position: absolute; display: block; max-width: none; }
+.dui-base, .dui-move { left: -14.36px; top: -201.82px; width: 274.578px; height: 411.867px; }
+.dui-mirror { left: -14.36px; top: 210.046px; width: 274.578px; height: 411.867px; }
+.an-base { left: -10.194px; top: -255.226px; width: 412.59px; height: 618.885px; filter: blur(.85px); }
+/* Figma's native render shows one orange layer (fill × mask gradient), not an additive double,
+   so the moving fill composites normally over its resting copy. Blurs are tightened from the
+   exported σ (1.97/2.31) to match Figma's canvas. */
+.an-move { left: -69.705px; top: -214.107px; width: 412.59px; height: 618.885px; filter: blur(.85px); }
+.shore-english { left: 628.323px; top: 344.939px; width: 235.22px; height: 195.41px; }
+.shore-pool { transform-origin: 0 0; transform: rotate(.93deg); background: radial-gradient(closest-side, rgb(0 0 0 / .8), transparent 110%); opacity: .1; filter: blur(21.3px); }
+.pool-a { left: 631.512px; top: 436.09px; width: 153.584px; height: 155.147px; }
+.pool-b { left: 695.575px; top: 569.278px; width: 187.45px; height: 95.492px; }
+/* Figma timeline (5s A–B–A): first half cubic-bezier(.5,0,.5,1), second half ease-in-out. */
+@keyframes dui-water { 0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  50% { transform: translate(-30.5488px, 127.1684px); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0); } }
+@keyframes dui-water-mirror { 0% { transform: translate(0, 0) scaleY(-1); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  50% { transform: translate(-30.5488px, 127.1684px) scaleY(-1); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0) scaleY(-1); } }
+@keyframes an-water { 0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  50% { transform: translate(-12.7879px, 25.5758px); animation-timing-function: cubic-bezier(.42, 0, .58, 1); } 100% { transform: translate(0, 0); } }
+.dui-mirror { transform: scaleY(-1); }
+.shore.playing .dui-move { animation: dui-water 5s infinite; }
+.shore.playing .dui-mirror { animation: dui-water-mirror 5s infinite; }
+.shore.playing .an-move { animation: an-water 5s infinite; }
+.shore-date { position: absolute; left: 692.001px; top: 226px; width: 127px; margin: 0; text-align: right; white-space: nowrap; color: #fff; opacity: .75;
+  font: 600 16px/19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, sans-serif; text-shadow: 0 1.705px 21.309px #000; }
+.shore-button { position: absolute; display: flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 100px; font: 600 16px/normal Inter, sans-serif; cursor: pointer; white-space: nowrap; }
+.shore-button.tickets { left: 628px; top: 697px; width: 146px; height: 44px; border: 0; background: #e62f0c; color: #fff; }
+.shore-button.explore { left: 786px; top: 696px; width: 99px; height: 46px; border: 1px solid #e62f0c; background: rgb(11 18 51 / .4); color: #e62f0c;
+  -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); box-shadow: 0 4px 12px -2px rgb(0 0 0 / .2); }
+.shore-button:focus-visible { outline: 1px solid #e62f0c; outline-offset: 5px; }
+
+@media (prefers-reduced-motion: reduce) { .shore.playing .dui-move, .shore.playing .dui-mirror, .shore.playing .an-move { animation: none; } }
