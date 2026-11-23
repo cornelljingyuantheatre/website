@@ -11,6 +11,7 @@ const lightPng = $('.light-png'), light2 = $('.light2-css');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field');
 const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering-ink');
+const letteringUpperInk = $('#lettering-upper-ink'), letteringUpperTint = $('#lettering-upper-tint-field');
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
 const rimLettering = $('.rim-lettering'), redMark = $('.red-wordmark'), shadowGroup = $('.shadow-group');
 const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore');
@@ -198,6 +199,9 @@ function render(time) {
   letteringLight.setAttribute('transform', field);
   letteringLight.setAttribute('opacity', brightness);
   letteringInk.setAttribute('gradientTransform', field);
+  letteringUpperInk.setAttribute('gradientTransform', field);
+  letteringUpperTint.setAttribute('transform', field);
+  letteringUpperTint.setAttribute('opacity', 1 - e);
   rimLettering.style.opacity = RIM_OPACITY * (1 - redReveal) * brightness;
   const r = (460 + beamBlur * .75).toFixed(2);
   outerColorField.setAttribute('r', r); lowerColorField.setAttribute('r', r);
