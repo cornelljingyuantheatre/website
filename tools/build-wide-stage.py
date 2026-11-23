@@ -17,16 +17,18 @@ def grab(tag_id, tag):
     return m.group(0)
 
 def tighten_rim(gradient):
-    # Keep opacity and the inner/peak profile. Compress only the outward tail.
+    # Preserve the rim strength and slide the falloff closer to the beam.
     original_radius = 460
     tail_start = 280
     tail_scale = .65
-    radius = tail_start + (original_radius - tail_start) * tail_scale
+    inward_shift = 14
+    radius = tail_start + (original_radius - tail_start) * tail_scale - inward_shift
 
     def scale_offset(match):
         distance = float(match[1]) * original_radius
         if distance > tail_start:
             distance = tail_start + (distance - tail_start) * tail_scale
+        distance -= inward_shift * min(1, distance / 200)
         return f'offset="{distance / radius:.9f}"'
 
     gradient = gradient.replace(f'r="{original_radius}"', f'r="{radius:g}"', 1)
@@ -72,7 +74,14 @@ defs.append('''<g id="illumination" opacity="0" style="isolation:isolate"><g mas
 <stop offset="0" stop-color="white"/><stop offset="90.555556%" stop-color="white"/><stop offset="93%" stop-color="white" stop-opacity=".88"/><stop offset="95.3%" stop-color="white" stop-opacity=".5"/><stop offset="97.7%" stop-color="white" stop-opacity=".12"/><stop offset="100%" stop-color="white" stop-opacity="0"/>
 </radialGradient>
 <radialGradient id="lettering-ink" gradientUnits="userSpaceOnUse" cx="344.5" cy="344.5" r="244.5">
-<stop offset="0" stop-color="#330e09"/><stop offset="50%" stop-color="#3e140e"/><stop offset="100%" stop-color="#501912"/>
+<!-- Blend toward the spotlight's red at its inside edge using solid ink colors. -->
+<stop offset="0" stop-color="#330e09"/>
+<stop offset="47%" stop-color="#3e140e"/>
+<stop offset="61%" stop-color="#4a180f"/>
+<stop offset="73%" stop-color="#5e1d13"/>
+<stop offset="85%" stop-color="#762317"/>
+<stop offset="95%" stop-color="#8d2a19"/>
+<stop offset="100%" stop-color="#932c1a"/>
 </radialGradient>
 <g id="lettering-light-field" opacity="0"><rect x="74.5" y="74.5" width="540" height="540" fill="url(#lettering-reveal-ramp)"/></g>
 <mask id="lettering-light-visibility" maskUnits="userSpaceOnUse" x="590" y="270" width="350" height="400" style="mask-type:alpha"><use href="#lettering-light-field"/></mask>''')

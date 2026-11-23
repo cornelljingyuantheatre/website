@@ -14,10 +14,8 @@ const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
 const rimLettering = $('.rim-lettering'), redMark = $('.red-wordmark'), shadowGroup = $('.shadow-group');
 const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore');
-let curtainReady = false;
 Promise.all([...curtain.querySelectorAll('img')].map(image => image.decode())).then(() => {
-  curtainReady = true;
-  wake();
+  curtain.style.opacity = 1;
 }, () => { /* Keep both layers hidden if either one fails to load. */ });
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -38,7 +36,7 @@ const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussi
 const U_SHORE = 2830;                           // The Other Shore follows the curtain scene.
 const PARALLAX = .72;
 const INTRO_LAG = 82;
-const MIN_LIGHT_EXIT_DISTANCE = 840;
+const MIN_LIGHT_EXIT_DISTANCE = 560;
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
@@ -64,7 +62,7 @@ let anim = null;                 // { from, to, start, src }
 let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
-let curtainStart = 0, lightExitLift = 0, titleExit = 0, copyExit = 0, scrollEnd = U_SHORE;
+let lightExit = 0, lightExitLift = 0, titleExit = 0, copyExit = 0, scrollEnd = U_SHORE;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -146,7 +144,7 @@ function currentPose() {
   if (phase === 'state1') return state1Pose();
   if (phase === 'state2') {
     // Let the copy clear the viewport before easing the beam the rest of the way up.
-    const lift = PARALLAX * u + lightExitLift * smooth(copyExit, curtainStart, u);
+    const lift = PARALLAX * u + lightExitLift * smooth(copyExit, lightExit, u);
     return { x: STATE2.x, y: STATE2.y - lift, size: state2Size };
   }
   const e = smootherstep(grow);
@@ -187,7 +185,6 @@ function render(time) {
   const introLag = reducedMotion.matches ? 0 : INTRO_LAG * smooth(160, titleExit, u);
   intro.style.transform = `translateY(${introLag}px)`;
   intro.style.opacity = smooth(.55, 1, e);
-  curtain.style.opacity = curtainReady ? smooth(curtainStart, curtainStart + 150, u) : 0;
   if (phase === 'state2' && u >= titleExit) return;
 
   // Light in title-local coordinates (content y = viewport y + u).
@@ -335,10 +332,12 @@ function resize() {
   copyExit = intro.offsetTop + intro.offsetHeight + INTRO_LAG - v.y0;
   const fullLightLift = STATE2.y + lightRadius - v.y0;
   const releaseDistance = Math.max(MIN_LIGHT_EXIT_DISTANCE, (fullLightLift - PARALLAX * copyExit) / 1.65);
-  const apertureEntry = CURTAIN_APERTURE_TOP - v.y1 + 50;
-  curtainStart = Math.max(apertureEntry, copyExit + releaseDistance);
-  lightExitLift = Math.max(0, fullLightLift - PARALLAX * curtainStart);
-  const curtainDelay = curtainStart - apertureEntry;
+  lightExit = copyExit + releaseDistance;
+  lightExitLift = Math.max(0, fullLightLift - PARALLAX * lightExit);
+  // Bring the opening into view as the last line leaves. The remaining light
+  // continues up behind it while the photograph and frame enter together.
+  const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
+  const curtainDelay = Math.max(0, copyExit - 55 - apertureEntry);
   content.style.setProperty('--curtain-delay', `${curtainDelay}px`);
   scrollEnd = U_SHORE + curtainDelay;
   journey.style.height = `${vh + scrollEnd * scale}px`;
