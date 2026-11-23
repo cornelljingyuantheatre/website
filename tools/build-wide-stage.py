@@ -16,7 +16,25 @@ def grab(tag_id, tag):
     assert m, tag_id
     return m.group(0)
 
-fields = ''.join(grab(i, 'radialGradient') for i in ['rim-reveal-ramp', 'outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
+def tighten_rim(gradient):
+    # Keep opacity and the inner/peak profile. Compress only the outward tail.
+    original_radius = 460
+    tail_start = 280
+    tail_scale = .65
+    radius = tail_start + (original_radius - tail_start) * tail_scale
+
+    def scale_offset(match):
+        distance = float(match[1]) * original_radius
+        if distance > tail_start:
+            distance = tail_start + (distance - tail_start) * tail_scale
+        return f'offset="{distance / radius:.9f}"'
+
+    gradient = gradient.replace(f'r="{original_radius}"', f'r="{radius:g}"', 1)
+    return re.sub(r'offset="([0-9.]+)"', scale_offset, gradient)
+
+
+fields = tighten_rim(grab('rim-reveal-ramp', 'radialGradient'))
+fields += ''.join(grab(i, 'radialGradient') for i in ['outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
 fields += ''.join(grab(i, 'linearGradient') for i in ['upper-field-weight', 'lower-field-weight'])
 soft_large = grab('title-soft-large', 'filter')
 soft_small = grab('title-soft-small', 'filter')
