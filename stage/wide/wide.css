@@ -20,27 +20,23 @@ body { overscroll-behavior-y: auto; }
 .light { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
 /* Native Figma PNG export of group 154:239 as a movable texture. Box enlarged by 400px so
    the soft copy's blur and the edge-blend mask fit; texture sits at (400,400). */
-.light-png { left: 0; top: 0; width: 1615.5px; height: 1658px; transform-origin: 807.5px 850.3px; isolation: isolate; --defocus: 0px; --a: 1;
-  /* Hand-off to the frame-clipped state-2 export. The state-1 texture fades (to --a) only
-     inside the 191:34 frame rectangle as it appears in this box (x 622.08–1006.6, y ≥ 621.14),
-     with 30.52px feathers = the export's 120px feathers at 1/3.9317. The two layers combine
-     source-over: alpha = 1 − (1 − a)·H·V, exactly complementary to the export's H·V mask. */
-  --tmx: linear-gradient(to right, #000 622.08px, transparent 652.6px, transparent 976.1px, #000 1006.6px);
-  --tmy: linear-gradient(to bottom, #000 621.14px, rgb(0 0 0 / var(--a)) 651.66px);
-  -webkit-mask-image: var(--tmx), var(--tmy); mask-image: var(--tmx), var(--tmy); }
+.light-png { left: 0; top: 0; width: 1615.5px; height: 1658px; transform-origin: 807.5px 850.3px; isolation: isolate; --defocus: 0px;
+}
 .light-png .tex-surface { position: absolute; left: 200px; top: 200px; width: 1215.5px; height: 1258px; mix-blend-mode: plus-lighter; }
 .light-png img { position: absolute; left: 200px; top: 200px; width: 815.5px; height: 858px; display: block; }
 /* Existing focused/defocused split of the lower half (circle-relative 17.6% → 96.5%). */
 .light-png .tex-clear { -webkit-mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); }
 .light-png .tex-soft { filter: blur(var(--defocus)); -webkit-mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); }
-/* Native state-2 export of 191:35. Figma clips it to frame 191:34 on the top and both sides,
-   so those edges are feathered (H·V) and the state-1 texture fills in beyond them. */
-.light2-png { position: absolute; left: 0; top: 0; width: 1512px; height: 2242px; transform-origin: 729px 901px; opacity: 0; mix-blend-mode: plus-lighter; will-change: transform, opacity;
-  --m2x: linear-gradient(to right, transparent, #000 120px, #000 calc(100% - 120px), transparent);
-  --m2y: linear-gradient(to bottom, transparent, #000 120px);
-  -webkit-mask-image: var(--m2x), var(--m2y); -webkit-mask-composite: source-in;
-  mask-image: var(--m2x), var(--m2y); mask-composite: intersect; }
-.light2-png img { display: block; width: 100%; height: 100%; }
+/* Both light layers share one centre and scale during the handoff. The CSS field
+   extends past the viewport edges, so it needs no crop mask or large blur filter. */
+.light2-css {
+  width: 2418px; height: 2418px; transform-origin: 50% 50%;
+  border-radius: 50%; mix-blend-mode: plus-lighter;
+  background:
+    radial-gradient(ellipse 43% 46% at 48% 49%, #e38b29 0%, #c36616d9 32%, #a6501166 66%, transparent 100%),
+    linear-gradient(180deg, #e32309 5%, #c3270a 36%, #872607 64%, #391106 84%, #190503 100%);
+  mask-image: radial-gradient(circle closest-side, #000 0%, #000 82%, #000a 93%, transparent 100%);
+}
 
 /* ---------- composition ---------- */
 .stage { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; pointer-events: none; }
@@ -53,7 +49,7 @@ body { overscroll-behavior-y: auto; }
 /* Curtain: photo inside the aperture (alpha mask 206:66), exterior-only glow overlay above it.
    The overlay's interior is fully transparent, so the photo receives no glow or blur. */
 .curtain { position: absolute; left: 108px; top: 1689px; width: 1296.44px; height: 842px; opacity: 0; }
-.curtain-photo { position: absolute; left: 210.928px; top: 105.464px; width: 836.929px; height: 630.158px; opacity: var(--photo, 0);
+.curtain-photo { position: absolute; left: 210.928px; top: 105.464px; width: 836.929px; height: 630.158px;
   -webkit-mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat;
   mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat; }
 .curtain-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }

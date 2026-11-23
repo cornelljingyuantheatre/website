@@ -16,7 +16,25 @@ def grab(tag_id, tag):
     assert m, tag_id
     return m.group(0)
 
-fields = ''.join(grab(i, 'radialGradient') for i in ['rim-reveal-ramp', 'outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
+def tighten_rim(gradient):
+    # Keep opacity and the inner/peak profile. Compress only the outward tail.
+    original_radius = 460
+    tail_start = 280
+    tail_scale = .65
+    radius = tail_start + (original_radius - tail_start) * tail_scale
+
+    def scale_offset(match):
+        distance = float(match[1]) * original_radius
+        if distance > tail_start:
+            distance = tail_start + (distance - tail_start) * tail_scale
+        return f'offset="{distance / radius:.9f}"'
+
+    gradient = gradient.replace(f'r="{original_radius}"', f'r="{radius:g}"', 1)
+    return re.sub(r'offset="([0-9.]+)"', scale_offset, gradient)
+
+
+fields = tighten_rim(grab('rim-reveal-ramp', 'radialGradient'))
+fields += ''.join(grab(i, 'radialGradient') for i in ['outer-color-field', 'outer-fade-field', 'lower-color-field', 'lower-fade-field'])
 fields += ''.join(grab(i, 'linearGradient') for i in ['upper-field-weight', 'lower-field-weight'])
 soft_large = grab('title-soft-large', 'filter')
 soft_small = grab('title-soft-small', 'filter')
@@ -106,7 +124,7 @@ title_svg = ('<svg class="title-field" viewBox="0 0 1512 982" xmlns="http://www.
 light_png = ('<div class="light light-png" data-node-id="154:239">'
              '<div class="tex-surface tex-clear"><img src="assets/light-154-239@2x.webp" alt="" draggable="false"></div>'
              '<div class="tex-surface tex-soft"><img src="assets/light-154-239@2x.webp" alt="" draggable="false"></div></div>'
-             '<div class="light2-png" data-node-id="191:35"><img src="assets/light-191-35@0.5x.webp" alt="" draggable="false"></div>')
+             '<div class="light light2-css" data-node-id="191:35"></div>')
 
 intro_lines = ['台上之境，', '台下之缘。', '', '康奈尔境缘剧社', '是以康奈尔大学为平台的', '中文话剧社。', '', '我们希望通过话剧表演，', '为话剧爱好者提供沟通交流的机会，', '传播中文语言魅力，', '丰富校园多元文化。']
 intro = '<p class="intro" data-node-id="192:160">' + ''.join(f'<span>{l or "&#8203;"}</span>' for l in intro_lines) + '</p>'

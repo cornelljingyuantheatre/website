@@ -4,16 +4,21 @@
 // and the whole-wordmark red state. One scroll gesture grows the scene into state 2
 // (191:34); further scrolling moves content 1:1 while the light rises with parallax, then
 // reveals the curtain photograph and The Other Shore (192:168).
-// The light is the native Figma export of group 154:239 (191:35 for state 2), moved as a texture.
+// State 1 moves the Figma texture; the expanded light is drawn with CSS.
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
-const lightPng = $('.light-png'), light2 = $('.light2-png');
+const lightPng = $('.light-png'), light2 = $('.light2-css');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field'), coreField = $('#core-field');
 const outerColorField = $('#outer-color-field'), lowerColorField = $('#lower-color-field');
 const rimLettering = $('.rim-lettering'), redMark = $('.red-wordmark'), shadowGroup = $('.shadow-group');
 const intro = $('.intro'), curtain = $('.curtain'), shore = $('.shore'), shoreFx = $('.shore-fx');
 shoreFx.pauseAnimations();
+let curtainReady = false;
+Promise.all([...curtain.querySelectorAll('img')].map(image => image.decode())).then(() => {
+  curtainReady = true;
+  wake();
+}, () => { /* Keep both layers hidden if either one fails to load. */ });
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -31,7 +36,10 @@ const SHADOW1 = { dx: 0, dy: 23, s: 1, blur: 12 };
 const SHADOW2 = { dx: 9.069, dy: 51.926, s: 0.98471, blur: 20 / TITLE2.s };
 const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussian σ, from the light fit (251.5 → 106)
 const U_SHORE = 2830, U_MAX = 2830;              // The Other Shore starts under frame 2 (2830 tall)
-const PARALLAX = 0.6;                            // light rises at 60% of the content speed
+const PARALLAX = .88;                           // Light still trails the title.
+const SCROLL_RESPONSE_MS = 95;
+const RIM_OPACITY = .22;
+const CURTAIN_APERTURE_TOP = 1841;
 const GROW_MS = 1500, GESTURE_GAP = 260;
 
 const slots = [...document.querySelectorAll('.glyph-slot')].map(r => ({ x: +r.getAttribute('x'), y: +r.getAttribute('y'), width: +r.getAttribute('width'), height: +r.getAttribute('height') }));
@@ -52,7 +60,7 @@ let phase = 'state1';            // state1 | grow | state2 | shrink
 let grow = 0;                    // eased-progress driver 0..1 (state1 → state2)
 let anim = null;                 // { from, to, start, src }
 let gestureLockUntil = 0, wheelSeenAt = 0;
-let u = 0;                       // design-px scroll inside state 2
+let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
 let started = false;
 
@@ -140,33 +148,35 @@ function currentPose() {
 function titleTransform(e) { return { x: lerp(TITLE_ORIGIN.x, TITLE2.x, e), y: lerp(TITLE_ORIGIN.y, TITLE2.y, e), s: lerp(1, TITLE2.s, e) }; }
 
 // ---------- render ----------
-let lastSoft = null, lastA = null;
+let lastSoft = null;
 function render(time) {
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
   const beam = beamAt(light.y);
   const inState1 = phase === 'state1';
   const beamBlur = (focusBlur + beam.blur) * (1 - e);
-  const dim = 1 - .88 * smooth(1100, 1750, u);
+  const viewportBottom = (vh - stageY) / scale;
+  const curtainStart = Math.max(460, CURTAIN_APERTURE_TOP - viewportBottom + 50);
+  const dim = 1 - smooth(curtainStart - 310, curtainStart + 30, u);
   const intensity = brightness * lerp(beam.intensity, 1, e) * dim;
   const vx = stageX + pose.x * scale, vy = stageY + pose.y * scale;
 
-  // Light: state-1 texture, cross-faded into the native state-2 export during the grow.
+  // Crossfade uncut light layers around the same moving centre in both directions.
   const w2 = smooth(.35, .85, e);
   lightPng.style.transform = `translate(${vx - 807.5}px, ${vy - 850.3}px) scale(${scale * pose.size})`;
-  lightPng.style.opacity = intensity;
+  lightPng.style.opacity = intensity * (1 - w2);
   const soft = `${Math.round(beamBlur)}px`; if (soft !== lastSoft) { lightPng.style.setProperty('--defocus', soft); lastSoft = soft; }
-  const a = (1 - w2).toFixed(3); if (a !== lastA) { lightPng.style.setProperty('--a', a); lastA = a; }
-  light2.style.transform = `translate(${vx - 729}px, ${vy - 901}px) scale(${scale * pose.size / STATE2.size})`;
+  light2.style.transform = `translate(${vx - 1209}px, ${vy - 1209}px) scale(${scale * pose.size / STATE2.size})`;
   light2.style.opacity = w2 * intensity;
 
   // Content: grows with the light (same eased driver), then scrolls 1:1.
   content.style.transform = `translateY(${-u}px)`;
   const T = titleTransform(e);
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  intro.style.opacity = smooth(.55, 1, e);
-  curtain.style.opacity = smooth(.55, 1, e);
-  curtain.style.setProperty('--photo', smooth(1450, 1800, u).toFixed(3));
+  const introLag = reducedMotion.matches ? 0 : 82 * smooth(160, curtainStart, u);
+  intro.style.transform = `translateY(${introLag}px)`;
+  intro.style.opacity = smooth(.55, 1, e) * (1 - smooth(curtainStart - 190, curtainStart + 30, u));
+  curtain.style.opacity = curtainReady ? smooth(curtainStart, curtainStart + 150, u) : 0;
   const shoreOn = u > U_SHORE - 982 - 200;
   if (shore.classList.contains('playing') !== shoreOn) { shore.classList.toggle('playing', shoreOn); shoreFx[shoreOn && !reducedMotion.matches ? 'unpauseAnimations' : 'pauseAnimations'](); }
 
@@ -178,7 +188,7 @@ function render(time) {
   const field = `translate(${Lloc.x} ${Lloc.y}) scale(${sizeLocal * K}) translate(-344.5 -344.5)`;
   illumination.setAttribute('transform', field); illumination.setAttribute('opacity', brightness);
   rimField.setAttribute('transform', field); coreField.setAttribute('transform', field);
-  rimLettering.style.opacity = .38 * (1 - redReveal) * brightness;
+  rimLettering.style.opacity = RIM_OPACITY * (1 - redReveal) * brightness;
   const r = (460 + beamBlur * .75).toFixed(2);
   outerColorField.setAttribute('r', r); lowerColorField.setAttribute('r', r);
 
@@ -226,6 +236,12 @@ function tick(time) {
       if (anim.to === 'state1') anim = null; else anim = { ...anim, done: true };
     } else busy = true;
   }
+  if (phase === 'state2') {
+    const progress = reducedMotion.matches ? 1 : 1 - Math.exp(-dt / SCROLL_RESPONSE_MS);
+    u = lerp(u, scrollTarget, progress);
+    if (Math.abs(scrollTarget - u) < .4) u = scrollTarget;
+    else busy = true;
+  }
   render(time);
   if (redReveal !== redRevealGoal) busy = true;
   if (busy) wake();
@@ -238,13 +254,13 @@ function startGrow() {
   if (phase !== 'state1' || !started) return;
   finishEntrance();
   anim = { to: 'state2', start: performance.now(), src: state1Pose() };
-  phase = 'grow'; window.scrollTo(0, 0); wake();
+  phase = 'grow'; u = scrollTarget = 0; window.scrollTo(0, 0); wake();
 }
 function startShrink() {
   if (phase !== 'state2') return;
   // Reverse the same eased path back to the resting state-1 pose.
   anim = { to: 'state1', start: performance.now(), src: { ...origin, size: restSize() } };
-  phase = 'shrink'; wake();
+  phase = 'shrink'; u = scrollTarget = 0; wake();
 }
 function gestureLocked(now) { return phase === 'grow' || phase === 'shrink' || now < gestureLockUntil; }
 addEventListener('wheel', ev => {
@@ -278,7 +294,7 @@ addEventListener('keydown', ev => {
 addEventListener('scroll', () => {
   if (phase === 'state1' && window.scrollY > 0 && started) { startGrow(); u = 0; return; }   // scrollbar / other inputs
   if (phase === 'state1' || phase === 'grow' || phase === 'shrink') { if (window.scrollY !== 0) window.scrollTo(0, 0); u = 0; return; }
-  u = clamp(window.scrollY / scale, 0, U_MAX); wake();
+  scrollTarget = clamp(window.scrollY / scale, 0, U_MAX); wake();
 }, { passive: true });
 
 // ---------- pointer (state 1 only; parked in state 2) ----------
@@ -300,7 +316,7 @@ function resize() {
   // Parked light must cover every viewport corner (keep them inside 93% of the radius).
   const v = viewBounds(), far = Math.max(...[[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]].map(([x, y]) => Math.hypot(x - STATE2.x, y - STATE2.y)));
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
-  if (phase === 'state2') u = clamp(window.scrollY / scale, 0, U_MAX);
+  if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, U_MAX);
   wake();
 }
 addEventListener('resize', resize);
