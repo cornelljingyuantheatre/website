@@ -4,6 +4,7 @@ const buttons = [...document.querySelectorAll('[data-mode]')];
 const stageURL = new URL('../stage/wide/index.html', location.href);
 const names = {
   live: '现版。下滑进入第二屏。',
+  desktop: '电脑版字标试验。移动鼠标看扫光，用滚轮进入和退出第二屏。',
   touch: '触屏试验。请试第一次滑动、继续滚动和滑回。',
   letters: '字标试验。请比较入场、扩光和笔画高光。',
 };
@@ -57,17 +58,19 @@ async function openMode(mode) {
     let preview = html.replace('<head>', `<head><base href="${stageURL}">`);
     if (mode !== 'live') {
       let script = await read(new URL(originalScript, stageURL));
-      script = replaceRequired(script, /let touchY = null;[\s\S]*?(?=addEventListener\('keydown')/, touchHandlers);
-      script = replaceRequired(script, /function render\(time\) \{/, `function render(time) {
-        const nativeVertical = String(phase === 'state2');
-        if (scene.dataset.nativeVertical !== nativeVertical) scene.dataset.nativeVertical = nativeVertical;`);
-      preview = preview.replace('</head>', `<style>
-        html,body { overscroll-behavior-y: none; }
-        .scene { touch-action: pan-x pinch-zoom; }
-        .scene[data-native-vertical="true"] { touch-action: pan-y pinch-zoom; }
-      </style></head>`);
+      if (mode === 'touch' || mode === 'letters') {
+        script = replaceRequired(script, /let touchY = null;[\s\S]*?(?=addEventListener\('keydown')/, touchHandlers);
+        script = replaceRequired(script, /function render\(time\) \{/, `function render(time) {
+          const nativeVertical = String(phase === 'state2');
+          if (scene.dataset.nativeVertical !== nativeVertical) scene.dataset.nativeVertical = nativeVertical;`);
+        preview = preview.replace('</head>', `<style>
+          html,body { overscroll-behavior-y: none; }
+          .scene { touch-action: pan-x pinch-zoom; }
+          .scene[data-native-vertical="true"] { touch-action: pan-y pinch-zoom; }
+        </style></head>`);
+      }
       let lettering = '';
-      if (mode === 'letters') {
+      if (mode === 'desktop' || mode === 'letters') {
         script = replaceRequired(script, /if \(phase === 'state2' && u >= titleExit\) return;/, `if (phase === 'state2' && u >= titleExit) {
           window.previewLettering?.hide();
           return;
