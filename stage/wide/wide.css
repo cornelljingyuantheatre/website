@@ -18,27 +18,20 @@ body { overscroll-behavior-y: auto; }
 /* Shared local frame: 815.5×858 (the native export's bounds at 1×). Red circle at (100,142.8),
    light centre (407.5,450.3). */
 .light { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
-/* Native Figma PNG export of group 154:239 as a movable texture. Box enlarged by 400px so
-   the soft copy's blur and the edge-blend mask fit; texture sits at (400,400). */
-.light-png { left: 0; top: 0; width: 1615.5px; height: 1658px; transform-origin: 807.5px 850.3px; isolation: isolate; --defocus: 0px;
-}
-.light-png .tex-surface { position: absolute; left: 200px; top: 200px; width: 1215.5px; height: 1258px; mix-blend-mode: plus-lighter; }
-.light-png img { position: absolute; left: 200px; top: 200px; width: 815.5px; height: 858px; display: block; }
-/* Existing focused/defocused split of the lower half (circle-relative 17.6% → 96.5%). */
-.light-png .tex-clear { -webkit-mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); mask-image: linear-gradient(to bottom, #000 451px, transparent 936.3px); }
-.light-png.no-defocus .tex-clear { -webkit-mask-image: none; mask-image: none; }
-.light-png.no-defocus .tex-soft { display: none; }
-.light-png .tex-soft { filter: blur(var(--defocus)); -webkit-mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); mask-image: linear-gradient(to bottom, transparent 451px, #000 936.3px); }
-/* Both light layers share one centre and scale during the handoff. The CSS field
-   extends past the viewport edges, so it needs no crop mask or large blur filter. */
-.light2-css {
-  width: 2418px; height: 2418px; transform-origin: 50% 50%;
-  border-radius: 50%; mix-blend-mode: plus-lighter;
-  background:
-    radial-gradient(ellipse 43% 46% at 48% 49%, #e38b29 0%, #c36616d9 32%, #a6501166 66%, transparent 100%),
-    linear-gradient(180deg, #e32309 5%, #c3270a 36%, #872607 64%, #391106 84%, #190503 100%);
-  mask-image: radial-gradient(circle closest-side, #000 0%, #000 82%, #000a 93%, transparent 100%);
-}
+/* A — CSS: vertical gradient circle, 10 complementary blur bands (masks sum to 1, no seams),
+   rotated amber ellipse. The wide pose fixes --gk at layout time, so the filters
+   stay unchanged during pointer movement, expansion and scroll. */
+.light-css { width: 815.5px; height: 858px; transform-origin: 407.5px 450.3px; mix-blend-mode: plus-lighter; isolation: isolate; --gk: 1; visibility: hidden; }
+.light-css .band { position: absolute; left: -300px; top: -300px; width: 1415.5px; height: 1458px; mix-blend-mode: plus-lighter;
+  --m: linear-gradient(to bottom, transparent calc((var(--prev) + 300) * 1px), #000 calc((var(--y) + 300) * 1px), transparent calc((var(--next) + 300) * 1px));
+  -webkit-mask-image: var(--m); mask-image: var(--m); }
+.light-css .band.first { --m: linear-gradient(to bottom, #000 calc((var(--y) + 300) * 1px), transparent calc((var(--next) + 300) * 1px)); }
+.light-css .band.last { --m: linear-gradient(to bottom, transparent calc((var(--prev) + 300) * 1px), #000 calc((var(--y) + 300) * 1px)); }
+.light-css .circle { position: absolute; left: 400px; top: 442.8px; width: 615px; height: 615px; border-radius: 50%;
+  background: linear-gradient(to bottom, #e40000, rgb(127 17 17 / .2));
+  filter: blur(calc(var(--s) * var(--gk) * 1px)); }
+.light-css .amber { position: absolute; left: 293.538px; top: 229.85px; width: 245.124px; height: 331.457px; border-radius: 50%;
+  background: #ffb431; opacity: .9375; filter: blur(106.25px); transform: rotate(132.732deg); }
 
 /* ---------- composition ---------- */
 .stage { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; pointer-events: none; }

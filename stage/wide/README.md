@@ -2,7 +2,7 @@
 
 Opened by the homepage at ≥800px (`hero.js`). Narrow screens keep `stage/index.html` unchanged.
 
-The lettering is live AaRuiYaTi text with per-glyph shadows and masks. The light is Figma's own render, moved as a texture (see below).
+The lettering is live AaRuiYaTi text with per-glyph shadows and masks. Both light poses use Claude's prototype A CSS renderer.
 
 ## Sources
 
@@ -16,9 +16,8 @@ The lettering is live AaRuiYaTi text with per-glyph shadows and masks. The light
 
 State-1 behaviour comes from `stage/app.js` at `25c8682`. The following are unchanged:
 - the entrance path, rates and landing;
-- the entrance cues (brightness, aperture, focus);
+- the entrance timing, brightness and aperture;
 - `beamAt(y)`;
-- the clear/soft lower-half blend;
 - the illumination, outer and rim fields;
 - `centralRedTriggerScale` (0.55), the 3px tolerance and the reversible 280ms fade.
 
@@ -26,11 +25,8 @@ The fields are scaled by 307.5/244.5 for the larger new light.
 
 ## Light
 
-- The light is the native Figma export of `154:239` at 2×.
-  - It carries the same clear/soft lower-half defocus blend as the current stage.
-  - During the grow it cross-fades into the `191:35` export. Figma clips that export to the 1512-wide frame, so beyond the frame edges the state-1 texture fills in. The two use complementary masks.
-  - Re-exporting `191:35` without the frame clip would remove that fill-in on very wide screens.
-- A CSS-only light (a gradient circle with 10 blur bands) was prototyped first and compared side by side. It was dropped because it drifted further from Figma (2.73 vs 0.72 mean error /255 in state 1) and redraws 11 large blurred layers each frame during the grow. It remains in commit `b62631d`.
+- Claude's CSS prototype from `b62631d` uses a red gradient circle, ten complementary blur bands and an amber ellipse.
+- Each pose uses fixed self-blur values while moving. The expanded pose sets its blur profile when the viewport is sized. The transition crossfades the two profiles at the same position and scale.
 
 ## Sequence
 

@@ -4,10 +4,10 @@
 // and the whole-wordmark red state. One scroll gesture grows the scene into state 2
 // (191:34); further scrolling moves content 1:1 while the light rises with parallax, then
 // reveals the curtain photograph and The Other Shore (192:168).
-// State 1 moves the Figma texture; the expanded light is drawn with CSS.
+// Both poses use Claude's CSS light with fixed blur profiles.
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
-const lightPng = $('.light-png'), light2 = $('.light2-css');
+const light1 = $('.light1-css'), light2 = $('.light2-css');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field');
 const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering-ink');
@@ -153,8 +153,12 @@ function currentPose() {
 function titleTransform(e) { return { x: lerp(TITLE_ORIGIN.x, TITLE2.x, e), y: lerp(TITLE_ORIGIN.y, TITLE2.y, e), s: lerp(1, TITLE2.s, e) }; }
 
 // ---------- render ----------
-let lastSoft = null;
 let parkedShadows = false;
+function placeLight(element, transform, opacity) {
+  element.style.visibility = opacity > 0 ? 'visible' : 'hidden';
+  if (opacity > 0) element.style.transform = transform;
+  element.style.opacity = opacity;
+}
 function render(time) {
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
@@ -164,19 +168,11 @@ function render(time) {
   const intensity = brightness * lerp(beam.intensity, 1, e);
   const vx = stageX + pose.x * scale, vy = stageY + pose.y * scale;
 
-  // Crossfade uncut light layers around the same moving centre in both directions.
+  // Crossfade two fixed self-blur profiles at the same centre and scale.
   const w2 = smooth(.35, .85, e);
-  lightPng.style.transform = `translate(${vx - 807.5}px, ${vy - 850.3}px) scale(${scale * pose.size})`;
-  lightPng.style.opacity = intensity * (1 - w2);
-  const soft = Math.round(beamBlur);
-  if (soft !== lastSoft) {
-    // Identical copies under complementary masks equal one unmasked copy at zero blur.
-    lightPng.classList.toggle('no-defocus', soft === 0);
-    lightPng.style.setProperty('--defocus', `${soft}px`);
-    lastSoft = soft;
-  }
-  light2.style.transform = `translate(${vx - 1209}px, ${vy - 1209}px) scale(${scale * pose.size / STATE2.size})`;
-  light2.style.opacity = w2 * intensity;
+  const beamTransform = `translate(${vx - 407.5}px, ${vy - 450.3}px) scale(${scale * pose.size})`;
+  placeLight(light1, beamTransform, intensity * (1 - w2));
+  placeLight(light2, beamTransform, intensity * w2);
 
   // Content: grows with the light (same eased driver), then scrolls 1:1.
   content.style.transform = `translateY(${-u}px)`;
@@ -327,10 +323,12 @@ function resize() {
   // Parked light must cover every viewport corner (keep them inside 93% of the radius).
   const v = viewBounds(), far = Math.max(...[[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]].map(([x, y]) => Math.hypot(x - STATE2.x, y - STATE2.y)));
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
+  light2.style.setProperty('--gk', (restSize() / state2Size).toFixed(3));
   const lightRadius = 307.5 * state2Size;
   titleExit = 880 - v.y0;
   copyExit = intro.offsetTop + intro.offsetHeight + INTRO_LAG - v.y0;
-  const fullLightLift = STATE2.y + lightRadius - v.y0;
+  // The CSS band's 60.5px outer blur has faint spill past the circle itself.
+  const fullLightLift = STATE2.y + lightRadius + 3 * 60.5 - v.y0;
   const releaseDistance = Math.max(MIN_LIGHT_EXIT_DISTANCE, (fullLightLift - PARALLAX * copyExit) / 1.65);
   lightExit = copyExit + releaseDistance;
   lightExitLift = Math.max(0, fullLightLift - PARALLAX * lightExit);
@@ -352,12 +350,11 @@ resize();
 // ---------- prototype switch ----------
 if (new URLSearchParams(location.search).has('record')) document.documentElement.classList.add('recording');
 
-// ---------- start once fonts and images are ready (dark until then) ----------
+// ---------- start once fonts are ready (dark until then) ----------
 if (entering) { entrancePlan = createEntrancePlan(); Object.assign(light, entrancePlan.sample(0)); }
 render(0);
 const fontsReady = document.fonts ? Promise.all([document.fonts.load('184px AaRuiYaTi', '境缘'), document.fonts.load('600 32px "Noto Serif SC"', '台')]).catch(() => {}) : Promise.resolve();
-const openingLightReady = lightPng.querySelector('img').decode().catch(() => {});
-Promise.race([Promise.all([fontsReady, openingLightReady]), new Promise(r => setTimeout(r, 2500))])
+Promise.race([fontsReady, new Promise(r => setTimeout(r, 2500))])
   .then(() => { started = true; entranceStart = null; if (window.scrollY) window.scrollTo(0, 0); wake(); });
 // Test hook (used by the comparison recorder; harmless otherwise).
 window.__stage = { get phase() { return phase; }, get u() { return u; }, get redReveal() { return redReveal; }, get light() { return { ...light }; }, get entering() { return entering; } };
