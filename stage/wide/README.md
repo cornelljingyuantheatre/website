@@ -30,13 +30,14 @@ The fields are scaled by 307.5/244.5 for the larger new light.
 
 ## Sequence
 
+Touch-capable devices keep the opening light centered and use swipe gestures to change states. On mouse-only devices the light can follow the pointer in state 1.
+
 1. One downward gesture (wheel, swipe, ArrowDown/PageDown/Space) grows state 1 into state 2 over 1.5s (smootherstep). The light and title share the same driver.
    - The rest of that gesture, including trackpad inertia, is absorbed.
 2. In state 2 the pointer is ignored.
-   - Native scrolling moves the content 1:1, and the light rises at 0.6× (parallax).
-   - The light dims 88% between 1100 and 1750 design px.
-   - The photo fades in between 1450 and 1800.
-   - The Other Shore follows at 2830.
+   - The wordmark and its shadows accelerate upward first. The wider light follows on a later curve.
+   - The introduction moves at a reading pace, then accelerates once the last line reaches the reading area.
+   - The curtain and photo enter together during the introduction's exit. The Other Shore follows the curtain.
 3. Scrolling back to the top and making one upward gesture reverses the sequence to state 1.
 4. Past the end, scrolling hands off to the homepage sections below.
 

@@ -2,8 +2,8 @@
 // stage/app.js at 25c8682: clockwise moving-head entrance, pointer-follow, beamAt(y)
 // size/brightness/defocus, independent entrance cues, moving illumination mask, rim reveal
 // and the whole-wordmark red state. One scroll gesture grows the scene into state 2
-// (191:34); further scrolling moves content 1:1 while the light rises with parallax, then
-// reveals the curtain photograph and The Other Shore (192:168).
+// (191:34); further scrolling staggers the wordmark, light and introduction, then
+// brings in the curtain photograph and The Other Shore (192:168).
 // Both poses use Claude's CSS light with fixed blur profiles.
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
@@ -18,6 +18,7 @@ Promise.all([...curtain.querySelectorAll('img')].map(image => image.decode())).t
   curtain.style.opacity = 1;
 }, () => { /* Keep both layers hidden if either one fails to load. */ });
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const touchCapable = matchMedia('(any-pointer: coarse)');
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smootherstep = t => t * t * t * (t * (t * 6 - 15) + 10);
@@ -34,9 +35,6 @@ const SHADOW1 = { dx: 0, dy: 23, s: 1, blur: 12 };
 const SHADOW2 = { dx: 9.069, dy: 51.926, s: 0.98471, blur: 20 / TITLE2.s };
 const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussian σ, from the light fit (251.5 → 106)
 const U_SHORE = 2830;                           // The Other Shore follows the curtain scene.
-const PARALLAX = .72;
-const INTRO_LAG = 82;
-const MIN_LIGHT_EXIT_DISTANCE = 560;
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
@@ -62,7 +60,8 @@ let anim = null;                 // { from, to, start, src }
 let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
-let lightExit = 0, lightExitLift = 0, titleExit = 0, copyExit = 0, scrollEnd = U_SHORE;
+let titleExit = 0, scrollEnd = U_SHORE;
+let titleTravel, introTravel, lightTravel;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -143,9 +142,7 @@ function lerpPose(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t)
 function currentPose() {
   if (phase === 'state1') return state1Pose();
   if (phase === 'state2') {
-    // Let the copy clear the viewport before easing the beam the rest of the way up.
-    const lift = PARALLAX * u + lightExitLift * smooth(copyExit, lightExit, u);
-    return { x: STATE2.x, y: STATE2.y - lift, size: state2Size };
+    return { x: STATE2.x, y: STATE2.y - lightTravel(u), size: state2Size };
   }
   const e = smootherstep(grow);
   return lerpPose(anim.src, { ...STATE2, size: state2Size }, e);
@@ -174,17 +171,17 @@ function render(time) {
   placeLight(light1, beamTransform, intensity * (1 - w2));
   placeLight(light2, beamTransform, intensity * w2);
 
-  // Content: grows with the light (same eased driver), then scrolls 1:1.
+  // The photo follows native scroll. The wordmark and intro have independent travel.
   content.style.transform = `translateY(${-u}px)`;
   const T = titleTransform(e);
-  titleGroup.setAttribute('transform', `translate(${T.x} ${T.y}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  const introLag = reducedMotion.matches ? 0 : INTRO_LAG * smooth(160, titleExit, u);
-  intro.style.transform = `translateY(${introLag}px)`;
+  const titleDistance = titleTravel(u);
+  titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + u - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
+  intro.style.transform = `translateY(${u - introTravel(u)}px)`;
   intro.style.opacity = smooth(.55, 1, e);
   if (phase === 'state2' && u >= titleExit) return;
 
-  // Light in title-local coordinates (content y = viewport y + u).
-  const Lloc = { x: TITLE_ORIGIN.x + (pose.x - T.x) / T.s, y: TITLE_ORIGIN.y + (pose.y + u - T.y) / T.s };
+  // Map the light into the independently moving wordmark.
+  const Lloc = { x: TITLE_ORIGIN.x + (pose.x - T.x) / T.s, y: TITLE_ORIGIN.y + (pose.y + titleDistance - T.y) / T.s };
   const sizeLocal = pose.size / T.s;
   updateCentralRedState(time, Lloc, sizeLocal);
   redMark.setAttribute('opacity', redReveal.toFixed(4));
@@ -308,11 +305,25 @@ addEventListener('scroll', () => {
 // ---------- pointer (state 1 only; parked in state 2) ----------
 function viewBounds() { return { x0: -stageX / scale, x1: (vw - stageX) / scale, y0: -stageY / scale, y1: (vh - stageY) / scale }; }
 function aimPointer(ev) { const v = viewBounds(), r = scene.getBoundingClientRect(); target.x = clamp((ev.clientX - r.left - stageX) / scale, v.x0, v.x1); target.y = clamp((ev.clientY - r.top - stageY) / scale, v.y0, v.y1); }
-scene.addEventListener('pointermove', ev => { if (entering || phase !== 'state1') return; aimPointer(ev); wake(); });
-scene.addEventListener('pointerdown', ev => { if (phase !== 'state1' || ev.target.closest('button,a')) return; finishEntrance(); aimPointer(ev); wake(); });
-scene.addEventListener('pointerleave', () => { if (!entering && phase === 'state1') { Object.assign(target, origin); wake(); } });
+function canAim(ev) { return phase === 'state1' && !touchCapable.matches && ev.pointerType !== 'touch'; }
+function resetAim() {
+  if (!entering && phase === 'state1') { Object.assign(target, origin); wake(); }
+}
+scene.addEventListener('pointermove', ev => { if (entering || !canAim(ev)) return; aimPointer(ev); wake(); });
+scene.addEventListener('pointerdown', ev => { if (!canAim(ev) || ev.target.closest('button,a')) return; finishEntrance(); aimPointer(ev); wake(); });
+scene.addEventListener('pointerleave', resetAim);
+touchCapable.addEventListener('change', resetAim);
 
 // ---------- layout ----------
+function acceleratingTravel(speed, start, end, distance) {
+  const extra = Math.max(0, distance - speed * end);
+  return scroll => {
+    const t = Math.max(0, (scroll - start) / (end - start));
+    // Keep the exit velocity past the viewport edge, including on reverse scroll.
+    return speed * scroll + extra * (t <= 1 ? t * t : 2 * t - 1);
+  };
+}
+
 function resize() {
   vw = scene.clientWidth; vh = scene.clientHeight;
   scale = Math.min(vw / 1512, vh / 982);
@@ -325,17 +336,30 @@ function resize() {
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
   light2.style.setProperty('--gk', (restSize() / state2Size).toFixed(3));
   const lightRadius = 307.5 * state2Size;
-  titleExit = 880 - v.y0;
-  copyExit = intro.offsetTop + intro.offsetHeight + INTRO_LAG - v.y0;
+  const viewHeight = v.y1 - v.y0;
+  const titleDistance = 880 - v.y0;
+  const copyDistance = intro.offsetTop + intro.offsetHeight - v.y0;
   // The CSS band's 60.5px outer blur has faint spill past the circle itself.
   const fullLightLift = STATE2.y + lightRadius + 3 * 60.5 - v.y0;
-  const releaseDistance = Math.max(MIN_LIGHT_EXIT_DISTANCE, (fullLightLift - PARALLAX * copyExit) / 1.65);
-  lightExit = copyExit + releaseDistance;
-  lightExitLift = Math.max(0, fullLightLift - PARALLAX * lightExit);
-  // Bring the opening into view as the last line leaves. The remaining light
-  // continues up behind it while the photograph and frame enter together.
+  const reduce = reducedMotion.matches;
+  titleExit = reduce ? titleDistance : titleDistance / 1.62;
+  titleTravel = reduce ? scroll => scroll : acceleratingTravel(.76, 0, titleExit, titleDistance);
+
+  const readingSpeed = .70;
+  // Start the faster exit after the last line has reached the reading area.
+  const copyRelease = Math.max(0, (copyDistance - .80 * viewHeight) / readingSpeed);
+  const copyExit = reduce ? copyDistance : copyRelease + .50 * viewHeight;
+  introTravel = reduce ? scroll => scroll : acceleratingTravel(readingSpeed, copyRelease, copyExit, copyDistance);
+
+  const lightRelease = Math.min(titleExit * .8, copyExit * .45);
+  const lightByCopyExit = fullLightLift - .10 * viewHeight;
+  lightTravel = reduce
+    ? scroll => scroll * (lightByCopyExit / copyExit)
+    : acceleratingTravel(.62, lightRelease, copyExit, lightByCopyExit);
+
+  // Let the top of the photo enter during the intro's final upward movement.
   const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
-  const curtainDelay = Math.max(0, copyExit - 55 - apertureEntry);
+  const curtainDelay = Math.max(0, copyExit - Math.min(240, .20 * viewHeight) - apertureEntry);
   content.style.setProperty('--curtain-delay', `${curtainDelay}px`);
   scrollEnd = U_SHORE + curtainDelay;
   journey.style.height = `${vh + scrollEnd * scale}px`;
@@ -344,7 +368,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 document.addEventListener('visibilitychange', wake);
-reducedMotion.addEventListener('change', wake);
+reducedMotion.addEventListener('change', resize);
 resize();
 
 // ---------- prototype switch ----------
