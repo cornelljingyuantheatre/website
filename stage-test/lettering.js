@@ -2,6 +2,8 @@
 // fallback while the font loads and still draws the all-red wordmark.
 (() => {
   const density = 2;
+  const shadowPadding = 44;
+  const shadowSoftness = 1.75;
   const tile = { x: 413, y: 105, width: 708, height: 708 };
   const center = 344.5;
 
@@ -80,22 +82,25 @@
       mask.ctx.font = font;
       mask.ctx.fillText(text, x - tile.x, y - tile.y);
       const box = mask.ctx.measureText(text);
-      const left = Math.floor(x - box.actualBoundingBoxLeft) - 36;
-      const top = Math.floor(y - box.actualBoundingBoxAscent) - 36;
-      const width = Math.ceil(x + box.actualBoundingBoxRight) - left + 36;
-      const height = Math.ceil(y + box.actualBoundingBoxDescent) - top + 36;
-      const { canvas, ctx } = surface(width, height);
-      ctx.font = font;
-      ctx.fillStyle = word.el.querySelector('use').style.fill;
-      ctx.fillText(text, x - left, y - top);
+      const left = Math.floor(x - box.actualBoundingBoxLeft) - shadowPadding;
+      const top = Math.floor(y - box.actualBoundingBoxAscent) - shadowPadding;
+      const width = Math.ceil(x + box.actualBoundingBoxRight) - left + shadowPadding;
+      const height = Math.ceil(y + box.actualBoundingBoxDescent) - top + shadowPadding;
+      const shadowColor = word.el.querySelector('use').style.fill;
       const variants = new Map();
       function blurred(sigma) {
-        const step = Math.round(sigma * 2) / 2;
+        const step = Math.round((sigma + shadowSoftness) * 2) / 2;
         if (!variants.has(step)) {
-          const image = surface(width, height);
-          image.ctx.filter = `blur(${step * density}px)`;
-          image.ctx.drawImage(canvas, 0, 0, width, height);
-          variants.set(step, image.canvas);
+          const { canvas, ctx } = surface(width, height);
+          // Bake just the shadow into the sprite; the source glyph is off-canvas.
+          // Canvas shadow blur works without CanvasRenderingContext2D.filter.
+          const sourceShift = width + shadowPadding;
+          ctx.font = font;
+          ctx.shadowColor = shadowColor;
+          ctx.shadowBlur = 2 * step * density;
+          ctx.shadowOffsetX = sourceShift * density;
+          ctx.fillText(text, x - left - sourceShift, y - top);
+          variants.set(step, canvas);
         }
         return variants.get(step);
       }
