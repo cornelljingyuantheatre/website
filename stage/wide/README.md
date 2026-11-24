@@ -36,7 +36,7 @@ Touch-capable devices keep the opening light centered and use swipe gestures to 
    - The rest of that gesture, including trackpad inertia, is absorbed.
 2. In state 2 the pointer is ignored.
    - The wordmark and its shadows accelerate upward first. The wider light follows on a later curve.
-   - The introduction keeps its reading-area light until the last line leaves the viewport.
+   - The amber part of the existing light moves more slowly than the main beam while the introduction passes.
    - The curtain and photo enter together immediately after the introduction, following the rising light's lower edge. The Other Shore follows the curtain.
 3. Scrolling back to the top and making one upward gesture reverses the sequence to state 1.
 4. Past the end, scrolling hands off to the homepage sections below.

@@ -8,7 +8,7 @@
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
 const light1 = $('.light1-css'), light2 = $('.light2-css');
-const readingLight = $('.reading-light');
+const expandedAmber = light2.querySelector('.amber');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field');
 const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering-ink');
@@ -39,7 +39,7 @@ const U_SHORE = 2830;                           // The Other Shore follows the c
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
-const READING_LIGHT_HALF_HEIGHT = 450;
+const AMBER_CENTER_OFFSET = -54.72;              // Existing amber ellipse centre relative to the light origin.
 const GROW_MS = 1500, GESTURE_GAP = 260;
 
 const slots = [...document.querySelectorAll('.glyph-slot')].map(r => ({ x: +r.getAttribute('x'), y: +r.getAttribute('y'), width: +r.getAttribute('width'), height: +r.getAttribute('height') }));
@@ -64,7 +64,7 @@ let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
 let titleExit = 0, scrollEnd = U_SHORE;
 let titleTravel, introTravel, lightTravel, frameTravel;
-let copyTop = 0, copyBottom = 0, viewportTop = 0, viewportBottom = 0;
+let copyTop = 0, copyBottom = 0, copyStartOffset = 0, viewportBottom = 0, viewHeight = 0;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -179,20 +179,20 @@ function render(time) {
   const T = titleTransform(e);
   const titleDistance = titleTravel(u);
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + frameDistance - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  // On taller screens, let the copy enter from below at full ink opacity.
-  const entryOffset = Math.max(0, viewportBottom - copyTop + 40) * (1 - smooth(.55, 1, e));
-  const copyTravel = introTravel(u) - entryOffset;
-  intro.style.transform = `translateY(${frameDistance - copyTravel}px)`;
+  const copyTravel = introTravel(u);
+  intro.style.transform = `translateY(${frameDistance - copyTravel + copyStartOffset}px)`;
   intro.style.opacity = e > .55 ? 1 : 0;
-  // Keep the amber pool behind the copy through the last visible line.
+  // Let the existing amber light lag the red disc while the introduction passes.
+  // Ease into the offset after the expanded light has settled.
+  const nativeAmberY = pose.y + AMBER_CENTER_OFFSET * pose.size;
   const copyY = (copyTop + copyBottom) / 2 - copyTravel;
-  const enter = smooth(viewportBottom + 180, viewportBottom, copyTop - copyTravel);
-  const readingLightVisible = copyY + READING_LIGHT_HALF_HEIGHT > viewportTop;
-  const readingOpacity = readingLightVisible ? .96 * enter * smooth(.18, .55, e) : 0;
-  readingLight.style.opacity = readingOpacity;
-  if (readingOpacity > 0) {
-    readingLight.style.transform = `translate(${stageX + 756.5 * scale - 660}px, ${stageY + copyY * scale - READING_LIGHT_HALF_HEIGHT}px) scale(${scale})`;
-  }
+  const amberLimit = Math.max(STATE2.y + AMBER_CENTER_OFFSET * state2Size + .11 * viewHeight, viewportBottom - .16 * viewHeight);
+  // Round off the handoff from the initial drift to the copy's upward motion.
+  const blendRange = .12 * viewHeight;
+  const soften = Math.max(0, blendRange - Math.abs(copyY - amberLimit));
+  const readingAmberY = Math.min(copyY, amberLimit) - soften * soften / (4 * blendRange);
+  const amberLag = Math.max(0, readingAmberY - nativeAmberY) * smooth(0, .16 * viewHeight, u);
+  expandedAmber.style.translate = amberLag > 0 ? `0 ${(amberLag / pose.size).toFixed(2)}px` : '';
   if (phase === 'state2' && u >= titleExit) return;
 
   // Map the light into the independently moving wordmark.
@@ -360,13 +360,16 @@ function resize() {
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
   light2.style.setProperty('--gk', (restSize() / state2Size).toFixed(3));
   const lightRadius = 307.5 * state2Size;
-  const viewHeight = v.y1 - v.y0;
+  viewHeight = v.y1 - v.y0;
   const titleDistance = 880 - v.y0;
-  copyTop = intro.offsetTop;
+  const restCopyTop = intro.offsetTop;
+  // Leave a short lead-in for tall viewports where the intro would appear
+  // before the warm part of the beam starts moving.
+  copyStartOffset = Math.max(0, v.y1 - restCopyTop + .055 * viewHeight);
+  copyTop = restCopyTop + copyStartOffset;
   copyBottom = copyTop + intro.offsetHeight;
-  viewportTop = v.y0;
   viewportBottom = v.y1;
-  const copyDistance = copyBottom - viewportTop;
+  const copyDistance = copyBottom - v.y0;
   const reduce = reducedMotion.matches;
   titleExit = reduce ? titleDistance : titleDistance / 1.62;
   titleTravel = reduce ? scroll => scroll : acceleratingTravel(.76, 0, titleExit, titleDistance);
