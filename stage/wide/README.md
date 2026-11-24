@@ -2,7 +2,7 @@
 
 Opened by the homepage at ≥800px (`hero.js`). Narrow screens keep `stage/index.html` unchanged.
 
-The lettering is live AaRuiYaTi text with per-glyph shadows and masks. Both light poses use Claude's prototype A CSS renderer.
+The lettering uses cached AaRuiYaTi glyphs and soft shadow sprites with moving illumination. The SVG remains the fallback and draws the red wordmark. Both light poses use Claude's prototype A CSS renderer.
 
 ## Sources
 
@@ -30,7 +30,7 @@ The fields are scaled by 307.5/244.5 for the larger new light.
 
 ## Sequence
 
-Touch-capable devices keep the opening light centered and use swipe gestures to change states. On mouse-only devices the light can follow the pointer in state 1.
+Touch-capable devices keep the opening light centered. Vertical swipes open state 2 from the top, then native vertical scrolling takes over. On mouse-only devices the light can follow the pointer in state 1.
 
 1. One downward gesture (wheel, swipe, ArrowDown/PageDown/Space) grows state 1 into state 2 over 1.5s (smootherstep). The light and title share the same driver.
    - The rest of that gesture, including trackpad inertia, is absorbed.

@@ -1,6 +1,7 @@
-// Experimental renderer for the isolated test page. The production SVG is the
-// fallback while the font loads and still draws the all-red wordmark.
+// Cache the glyphs and soft shadows. The SVG remains visible while they load
+// and still draws the all-red wordmark.
 (() => {
+  if (stageTestMode === 'touch') return;
   const density = 2;
   const shadowPadding = 44;
   const shadowSoftness = 1;
@@ -174,7 +175,7 @@
 
     const canvas = output.canvas;
     canvas.setAttribute('aria-hidden', 'true');
-    canvas.dataset.letteringPreview = 'true';
+    canvas.className = 'cached-lettering';
     Object.assign(canvas.style, {
       position: 'absolute', left: '0', top: '0', pointerEvents: 'none',
       width: `${tile.width}px`, height: `${tile.height}px`, transformOrigin: '0 0',
@@ -184,7 +185,7 @@
     for (const selector of ['.shadow-layer', '.rim-lettering', '.lit-lettering']) {
       svg.querySelector(selector).style.display = 'none';
     }
-    window.previewLettering = {
+    window.stageLettering = {
       hide() { canvas.hidden = true; },
       draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1 }) {
         canvas.hidden = false;
@@ -197,7 +198,7 @@
         paintGlyphs(ink, Lloc, scale, brightness);
       },
     };
-    document.documentElement.dataset.letteringPreview = 'ready';
+    document.documentElement.dataset.letteringRenderer = 'cached';
     wake();
   }
 
@@ -207,7 +208,7 @@
       init();
     })
     .catch(error => {
-      document.documentElement.dataset.letteringPreview = 'fallback';
+      document.documentElement.dataset.letteringRenderer = 'svg';
       console.error(error);
     });
 })();

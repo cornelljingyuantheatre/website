@@ -4,7 +4,7 @@
 // keeps the existing stage/index.html unchanged.
 const jingyuanWideQuery = matchMedia('(min-width: 800px)');
 function jingyuanStageSrc() {
-  return jingyuanWideQuery.matches ? 'stage/wide/index.html' : 'stage/index.html';
+  return jingyuanWideQuery.matches ? 'stage/wide/index.html?v=cached-lettering-1' : 'stage/index.html';
 }
 const jingyuanHeroMarkup = `<section class="jingyuan-hero" aria-label="Jingyuan stage"><iframe class="jingyuan-stage-frame" src="${jingyuanStageSrc()}" title="境缘剧社 · 舞台与对岸演出" loading="eager"></iframe></section>`;
 function initJingyuanHero(root) {

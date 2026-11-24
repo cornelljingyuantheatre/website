@@ -19,6 +19,9 @@ Promise.all([...curtain.querySelectorAll('img')].map(image => image.decode())).t
 }, () => { /* Keep both layers hidden if either one fails to load. */ });
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const touchCapable = matchMedia('(any-pointer: coarse)');
+const stageTestMode = new URLSearchParams(location.search).get('stage-test');
+const hasTouchInput = () => touchCapable.matches || navigator.maxTouchPoints > 0;
+const useTouchGestures = () => stageTestMode !== 'desktop' && (hasTouchInput() || stageTestMode === 'touch' || stageTestMode === 'letters');
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smootherstep = t => t * t * t * (t * (t * 6 - 15) + 10);
@@ -158,6 +161,9 @@ function placeLight(element, transform, opacity) {
   element.style.opacity = opacity;
 }
 function render(time) {
+  const touchStage = useTouchGestures();
+  document.documentElement.classList.toggle('touch-stage', touchStage);
+  scene.toggleAttribute('data-swipe-only', touchStage && phase !== 'state2');
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
   const beam = beamAt(light.y);
@@ -180,7 +186,10 @@ function render(time) {
   const copyTravel = introTravel(u);
   intro.style.transform = `translateY(${frameDistance - copyTravel + copyStartOffset}px)`;
   intro.style.opacity = e > .55 ? 1 : 0;
-  if (phase === 'state2' && u >= titleExit) return;
+  if (phase === 'state2' && u >= titleExit) {
+    window.stageLettering?.hide();
+    return;
+  }
 
   // Map the light into the independently moving wordmark.
   const Lloc = { x: TITLE_ORIGIN.x + (pose.x - T.x) / T.s, y: TITLE_ORIGIN.y + (pose.y + titleDistance - T.y) / T.s };
@@ -188,14 +197,22 @@ function render(time) {
   updateCentralRedState(time, Lloc, sizeLocal);
   redMark.setAttribute('opacity', redReveal.toFixed(4));
   const field = `translate(${Lloc.x} ${Lloc.y}) scale(${sizeLocal * K}) translate(-344.5 -344.5)`;
-  illumination.setAttribute('transform', field); illumination.setAttribute('opacity', brightness);
+  const r = (460 + beamBlur * .75).toFixed(2);
+  if (!window.stageLettering || redReveal > 0) {
+    illumination.setAttribute('transform', field);
+    illumination.setAttribute('opacity', brightness);
+    outerColorField.setAttribute('r', r);
+    lowerColorField.setAttribute('r', r);
+  }
+  if (window.stageLettering) {
+    window.stageLettering.draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1 });
+    return;
+  }
   rimField.setAttribute('transform', field);
   letteringLight.setAttribute('transform', field);
   letteringLight.setAttribute('opacity', brightness);
   letteringInk.setAttribute('gradientTransform', field);
   rimLettering.style.opacity = RIM_OPACITY * (1 - redReveal) * brightness;
-  const r = (460 + beamBlur * .75).toFixed(2);
-  outerColorField.setAttribute('r', r); lowerColorField.setAttribute('r', r);
 
   // Per-glyph shadows: designed resting offset, plus projection away from the live light.
   if (phase === 'state2' && parkedShadows) return;
@@ -279,14 +296,26 @@ addEventListener('wheel', ev => {
   }
   if (phase === 'state2' && window.scrollY <= 0 && ev.deltaY < 0) { ev.preventDefault(); startShrink(); gestureLockUntil = now + GESTURE_GAP; }
 }, { passive: false });
-let touchY = null;
-addEventListener('touchstart', ev => { touchY = ev.touches[0]?.clientY ?? null; }, { passive: true });
-addEventListener('touchmove', ev => {
-  if (touchY === null) return; const dy = touchY - ev.touches[0].clientY;
-  if (phase === 'grow' || phase === 'shrink') { ev.preventDefault(); return; }
-  if (phase === 'state1' && dy > 12) { ev.preventDefault(); startGrow(); touchY = null; }
-  else if (phase === 'state2' && window.scrollY <= 0 && dy < -12) { ev.preventDefault(); startShrink(); touchY = null; }
-}, { passive: false });
+let swipe = null;
+scene.addEventListener('touchstart', event => {
+  swipe = null;
+  if (!useTouchGestures() || event.touches.length !== 1 || event.target.closest('button,a')) return;
+  const point = event.touches[0];
+  swipe = { x: point.clientX, y: point.clientY, phase, atTop: scrollY <= 0 };
+}, { passive: true });
+scene.addEventListener('touchmove', event => {
+  if (!swipe || event.touches.length !== 1) { swipe = null; return; }
+  const point = event.touches[0];
+  const dy = swipe.y - point.clientY;
+  if (Math.abs(dy) <= 12 || Math.abs(dy) <= Math.abs(swipe.x - point.clientX)) return;
+  const start = swipe;
+  swipe = null;
+  if (phase === 'state1' && start.phase === phase && dy > 0) startGrow();
+  if (phase === 'state2' && start.phase === phase && start.atTop && scrollY <= 0 && dy < 0) startShrink();
+}, { passive: true });
+for (const event of ['touchend', 'touchcancel']) {
+  scene.addEventListener(event, () => { swipe = null; }, { passive: true });
+}
 addEventListener('keydown', ev => {
   if (ev.target.closest?.('button')) return;
   const down = ['ArrowDown', 'PageDown', ' ', 'Spacebar'].includes(ev.key), up = ['ArrowUp', 'PageUp', 'Home'].includes(ev.key);
@@ -307,14 +336,14 @@ addEventListener('scroll', () => {
 // ---------- pointer (state 1 only; parked in state 2) ----------
 function viewBounds() { return { x0: -stageX / scale, x1: (vw - stageX) / scale, y0: -stageY / scale, y1: (vh - stageY) / scale }; }
 function aimPointer(ev) { const v = viewBounds(), r = scene.getBoundingClientRect(); target.x = clamp((ev.clientX - r.left - stageX) / scale, v.x0, v.x1); target.y = clamp((ev.clientY - r.top - stageY) / scale, v.y0, v.y1); }
-function canAim(ev) { return phase === 'state1' && !touchCapable.matches && ev.pointerType !== 'touch'; }
+function canAim(ev) { return phase === 'state1' && !hasTouchInput() && ev.pointerType !== 'touch'; }
 function resetAim() {
   if (!entering && phase === 'state1') { Object.assign(target, origin); wake(); }
 }
 scene.addEventListener('pointermove', ev => { if (entering || !canAim(ev)) return; aimPointer(ev); wake(); });
 scene.addEventListener('pointerdown', ev => { if (!canAim(ev) || ev.target.closest('button,a')) return; finishEntrance(); aimPointer(ev); wake(); });
 scene.addEventListener('pointerleave', resetAim);
-touchCapable.addEventListener('change', resetAim);
+touchCapable.addEventListener('change', () => { resetAim(); wake(); });
 
 // ---------- layout ----------
 function acceleratingTravel(speed, start, end, distance) {

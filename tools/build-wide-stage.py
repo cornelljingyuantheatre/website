@@ -163,7 +163,7 @@ shore = '''<section class="shore" data-node-id="192:168" aria-label="对岸 The 
 </section>'''
 
 stage = Path('stage/wide')
-asset_source = ''.join((stage / name).read_text(encoding='utf8') for name in ('wide.css', 'wide.js'))
+asset_source = ''.join((stage / name).read_text(encoding='utf8') for name in ('wide.css', 'wide.js', 'lettering.js'))
 asset_version = sha256(asset_source.encode('utf8')).hexdigest()[:12]
 
 html = f'''<!doctype html>
@@ -187,6 +187,7 @@ html = f'''<!doctype html>
 </div></div>
 </div></main>
 <script src="wide.js?v={asset_version}"></script>
+<script src="lettering.js?v={asset_version}"></script>
 </body></html>
 '''
 open('stage/wide/index.html', 'w', encoding='utf8').write(html)
