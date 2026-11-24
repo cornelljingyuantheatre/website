@@ -32,6 +32,9 @@ body { overscroll-behavior-y: auto; }
   filter: blur(calc(var(--s) * var(--gk) * 1px)); }
 .light-css .amber { position: absolute; left: 293.538px; top: 229.85px; width: 245.124px; height: 331.457px; border-radius: 50%;
   background: #ffb431; opacity: .9375; filter: blur(106.25px); transform: rotate(132.732deg); }
+.reading-light { position: absolute; left: 0; top: 0; width: 1320px; height: 900px;
+  background: radial-gradient(ellipse closest-side, #cc9056 0%, #c58a50 61%, #8b4c28a0 78%, #6f381a32 93%, transparent);
+  opacity: 0; pointer-events: none; will-change: transform, opacity; }
 
 /* ---------- composition ---------- */
 .stage { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; pointer-events: none; }

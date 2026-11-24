@@ -8,6 +8,7 @@
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
 const light1 = $('.light1-css'), light2 = $('.light2-css');
+const readingLight = $('.reading-light');
 const titleGroup = $('#title-group');
 const illumination = $('#illumination'), rimField = $('#rim-light-field');
 const letteringLight = $('#lettering-light-field'), letteringInk = $('#lettering-ink');
@@ -62,6 +63,7 @@ let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
 let titleExit = 0, scrollEnd = U_SHORE;
 let titleTravel, introTravel, lightTravel;
+let copyTop = 0, copyBottom = 0, viewportTop = 0, viewportBottom = 0;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -176,8 +178,17 @@ function render(time) {
   const T = titleTransform(e);
   const titleDistance = titleTravel(u);
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + u - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  intro.style.transform = `translateY(${u - introTravel(u)}px)`;
+  const copyTravel = introTravel(u);
+  intro.style.transform = `translateY(${u - copyTravel}px)`;
   intro.style.opacity = smooth(.55, 1, e);
+  // Keep the amber pool behind the copy through the last visible line.
+  const copyY = (copyTop + copyBottom) / 2 - copyTravel;
+  const enter = smooth(viewportBottom + 180, viewportBottom, copyTop - copyTravel);
+  const exit = smooth(viewportTop - 145, viewportTop, copyBottom - copyTravel);
+  readingLight.style.opacity = .94 * enter * exit * e;
+  if (enter * exit * e > 0) {
+    readingLight.style.transform = `translate(${stageX + 756.5 * scale - 660}px, ${stageY + copyY * scale - 450}px) scale(${scale})`;
+  }
   if (phase === 'state2' && u >= titleExit) return;
 
   // Map the light into the independently moving wordmark.
@@ -338,7 +349,11 @@ function resize() {
   const lightRadius = 307.5 * state2Size;
   const viewHeight = v.y1 - v.y0;
   const titleDistance = 880 - v.y0;
-  const copyDistance = intro.offsetTop + intro.offsetHeight - v.y0;
+  copyTop = intro.offsetTop;
+  copyBottom = copyTop + intro.offsetHeight;
+  viewportTop = v.y0;
+  viewportBottom = v.y1;
+  const copyDistance = copyBottom - viewportTop;
   // The CSS band's 60.5px outer blur has faint spill past the circle itself.
   const fullLightLift = STATE2.y + lightRadius + 3 * 60.5 - v.y0;
   const reduce = reducedMotion.matches;

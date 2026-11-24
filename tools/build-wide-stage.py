@@ -172,7 +172,7 @@ html = f'''<!doctype html>
 <main class="journey"><div class="scene" tabindex="0" aria-label="境缘 · Chinese Drama Society at Cornell. Move the pointer to guide the spotlight; scroll to open the stage.">
 <h1 class="accessible">境缘 — Chinese Drama Society At Cornell</h1>
 <p class="accessible">台上之境，台下之缘。康奈尔境缘剧社是以康奈尔大学为平台的中文话剧社。我们希望通过话剧表演，为话剧爱好者提供沟通交流的机会，传播中文语言魅力，丰富校园多元文化。</p>
-<div class="light-layer" aria-hidden="true">{light_css}</div>
+<div class="light-layer" aria-hidden="true">{light_css}<div class="reading-light"></div></div>
 <div class="stage"><div class="content">
 {title_svg}
 {intro}
