@@ -85,7 +85,7 @@ async function openMode(mode) {
           return;
         }
         illumination.setAttribute('transform', field);`);
-        lettering = `<script src="${new URL('lettering.js?v=soft-shadow-1', location.href)}"><\/script>`;
+        lettering = `<script src="${new URL('lettering.js?v=soft-shadow-2', location.href)}"><\/script>`;
       }
       preview = preview.replace(scriptTag, () => `<script>${script.replaceAll('</script', '<\\/script')}<\/script>${lettering}`);
     }

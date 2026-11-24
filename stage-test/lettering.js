@@ -3,7 +3,7 @@
 (() => {
   const density = 2;
   const shadowPadding = 44;
-  const shadowSoftness = 1.75;
+  const shadowSoftness = 1;
   const tile = { x: 413, y: 105, width: 708, height: 708 };
   const center = 344.5;
 
