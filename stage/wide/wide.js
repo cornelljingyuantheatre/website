@@ -39,6 +39,7 @@ const U_SHORE = 2830;                           // The Other Shore follows the c
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
 const CURTAIN_APERTURE_TOP = 1841;
+const READING_LIGHT_HALF_HEIGHT = 450;
 const GROW_MS = 1500, GESTURE_GAP = 260;
 
 const slots = [...document.querySelectorAll('.glyph-slot')].map(r => ({ x: +r.getAttribute('x'), y: +r.getAttribute('y'), width: +r.getAttribute('width'), height: +r.getAttribute('height') }));
@@ -62,7 +63,7 @@ let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
 let titleExit = 0, scrollEnd = U_SHORE;
-let titleTravel, introTravel, lightTravel;
+let titleTravel, introTravel, lightTravel, frameTravel;
 let copyTop = 0, copyBottom = 0, viewportTop = 0, viewportBottom = 0;
 let started = false;
 
@@ -173,21 +174,24 @@ function render(time) {
   placeLight(light1, beamTransform, intensity * (1 - w2));
   placeLight(light2, beamTransform, intensity * w2);
 
-  // The photo follows native scroll. The wordmark and intro have independent travel.
-  content.style.transform = `translateY(${-u}px)`;
+  const frameDistance = frameTravel(u);
+  content.style.transform = `translateY(${-frameDistance}px)`;
   const T = titleTransform(e);
   const titleDistance = titleTravel(u);
-  titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + u - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
-  const copyTravel = introTravel(u);
-  intro.style.transform = `translateY(${u - copyTravel}px)`;
-  intro.style.opacity = smooth(.55, 1, e);
+  titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + frameDistance - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
+  // On taller screens, let the copy enter from below at full ink opacity.
+  const entryOffset = Math.max(0, viewportBottom - copyTop + 40) * (1 - smooth(.55, 1, e));
+  const copyTravel = introTravel(u) - entryOffset;
+  intro.style.transform = `translateY(${frameDistance - copyTravel}px)`;
+  intro.style.opacity = e > .55 ? 1 : 0;
   // Keep the amber pool behind the copy through the last visible line.
   const copyY = (copyTop + copyBottom) / 2 - copyTravel;
   const enter = smooth(viewportBottom + 180, viewportBottom, copyTop - copyTravel);
-  const exit = smooth(viewportTop - 145, viewportTop, copyBottom - copyTravel);
-  readingLight.style.opacity = .94 * enter * exit * e;
-  if (enter * exit * e > 0) {
-    readingLight.style.transform = `translate(${stageX + 756.5 * scale - 660}px, ${stageY + copyY * scale - 450}px) scale(${scale})`;
+  const readingLightVisible = copyY + READING_LIGHT_HALF_HEIGHT > viewportTop;
+  const readingOpacity = readingLightVisible ? .96 * enter * smooth(.18, .55, e) : 0;
+  readingLight.style.opacity = readingOpacity;
+  if (readingOpacity > 0) {
+    readingLight.style.transform = `translate(${stageX + 756.5 * scale - 660}px, ${stageY + copyY * scale - READING_LIGHT_HALF_HEIGHT}px) scale(${scale})`;
   }
   if (phase === 'state2' && u >= titleExit) return;
 
@@ -335,6 +339,15 @@ function acceleratingTravel(speed, start, end, distance) {
   };
 }
 
+function lightApproach(scroll, end, distance, exitSpeed) {
+  // Match the photo's initial speed when it enters directly below the beam.
+  const t = clamp(scroll / end, 0, 1);
+  const initialSlope = .55 * distance;
+  const finalSlope = exitSpeed * end;
+  return t * (initialSlope + t * (3 * distance - 2 * initialSlope - finalSlope
+    + t * (initialSlope + finalSlope - 2 * distance)));
+}
+
 function resize() {
   vw = scene.clientWidth; vh = scene.clientHeight;
   scale = Math.min(vw / 1512, vh / 982);
@@ -354,29 +367,34 @@ function resize() {
   viewportTop = v.y0;
   viewportBottom = v.y1;
   const copyDistance = copyBottom - viewportTop;
-  // The CSS band's 60.5px outer blur has faint spill past the circle itself.
-  const fullLightLift = STATE2.y + lightRadius + 3 * 60.5 - v.y0;
   const reduce = reducedMotion.matches;
   titleExit = reduce ? titleDistance : titleDistance / 1.62;
   titleTravel = reduce ? scroll => scroll : acceleratingTravel(.76, 0, titleExit, titleDistance);
 
   const readingSpeed = .70;
-  // Start the faster exit after the last line has reached the reading area.
   const copyRelease = Math.max(0, (copyDistance - .80 * viewHeight) / readingSpeed);
   const copyExit = reduce ? copyDistance : copyRelease + .50 * viewHeight;
   introTravel = reduce ? scroll => scroll : acceleratingTravel(readingSpeed, copyRelease, copyExit, copyDistance);
 
-  const lightRelease = Math.min(titleExit * .8, copyExit * .45);
-  const lightByCopyExit = fullLightLift - .10 * viewHeight;
-  lightTravel = reduce
-    ? scroll => scroll * (lightByCopyExit / copyExit)
-    : acceleratingTravel(.62, lightRelease, copyExit, lightByCopyExit);
+  // Before the photo enters, bring the light's lower edge to the viewport bottom.
+  // Afterward the light and photo travel together, with the photo directly below it.
+  const entryLift = Math.max(0, STATE2.y + lightRadius - v.y1 + .02 * viewHeight);
+  const handoffSpeed = Math.min(1, 2 * entryLift / copyExit);
+  const handoffSpan = .72 * viewHeight;
+  const frameGain = reduce ? 0 : .57 * viewHeight;
+  frameTravel = scroll => {
+    const elapsed = clamp(scroll - copyExit, 0, handoffSpan);
+    const blend = smooth(0, handoffSpan, elapsed);
+    return scroll + frameGain * blend + (handoffSpeed - 1) * elapsed * (1 - blend);
+  };
+  lightTravel = scroll => scroll <= copyExit
+    ? lightApproach(scroll, copyExit, entryLift, handoffSpeed)
+    : entryLift + frameTravel(scroll) - copyExit;
 
-  // Let the top of the photo enter during the intro's final upward movement.
   const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
-  const curtainDelay = Math.max(0, copyExit - Math.min(240, .20 * viewHeight) - apertureEntry);
+  const curtainDelay = Math.max(0, copyExit - apertureEntry);
   content.style.setProperty('--curtain-delay', `${curtainDelay}px`);
-  scrollEnd = U_SHORE + curtainDelay;
+  scrollEnd = U_SHORE + curtainDelay - frameGain;
   journey.style.height = `${vh + scrollEnd * scale}px`;
   if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, scrollEnd);
   wake();

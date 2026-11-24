@@ -33,7 +33,7 @@ body { overscroll-behavior-y: auto; }
 .light-css .amber { position: absolute; left: 293.538px; top: 229.85px; width: 245.124px; height: 331.457px; border-radius: 50%;
   background: #ffb431; opacity: .9375; filter: blur(106.25px); transform: rotate(132.732deg); }
 .reading-light { position: absolute; left: 0; top: 0; width: 1320px; height: 900px;
-  background: radial-gradient(ellipse closest-side, #cc9056 0%, #c58a50 61%, #8b4c28a0 78%, #6f381a32 93%, transparent);
+  background: radial-gradient(ellipse closest-side, #e1a369 0%, #d49a60 65%, #a0613999 80%, #6f381a32 93%, transparent);
   opacity: 0; pointer-events: none; will-change: transform, opacity; }
 
 /* ---------- composition ---------- */

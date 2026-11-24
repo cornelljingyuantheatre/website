@@ -8,6 +8,8 @@ Figma frames 154:238 (state 1), 191:34 (state 2), 195:341 (red) and 192:168 (对
 Run from the repository root:  python3 tools/build-wide-stage.py
 """
 import re, subprocess
+from hashlib import sha256
+from pathlib import Path
 
 src = subprocess.run(['git', 'show', '25c8682:stage/index.html'], capture_output=True, text=True, check=True).stdout
 
@@ -160,13 +162,17 @@ shore = '''<section class="shore" data-node-id="192:168" aria-label="对岸 The 
 <button class="shore-button explore" type="button" data-node-id="196:422">Explore</button>
 </section>'''
 
+stage = Path('stage/wide')
+asset_source = ''.join((stage / name).read_text(encoding='utf8') for name in ('wide.css', 'wide.js'))
+asset_version = sha256(asset_source.encode('utf8')).hexdigest()[:12]
+
 html = f'''<!doctype html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#000000">
 <title>境缘 · Chinese Drama Society at Cornell </title>
 <link rel="preload" href="../assets/fonts/aaruiyati-title.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/noto-serif-sc-600-intro.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="wide.css">
+<link rel="stylesheet" href="wide.css?v={asset_version}">
 </head>
 <body>
 <main class="journey"><div class="scene" tabindex="0" aria-label="境缘 · Chinese Drama Society at Cornell. Move the pointer to guide the spotlight; scroll to open the stage.">
@@ -180,7 +186,7 @@ html = f'''<!doctype html>
 {shore}
 </div></div>
 </div></main>
-<script src="wide.js"></script>
+<script src="wide.js?v={asset_version}"></script>
 </body></html>
 '''
 open('stage/wide/index.html', 'w', encoding='utf8').write(html)
