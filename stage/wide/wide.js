@@ -388,19 +388,19 @@ function resize() {
     ? lightApproach(scroll, copyExit, entryLift, handoffSpeed)
     : entryLift + frameTravel(scroll) - copyExit;
 
-  // Animate the existing amber ellipse in stage coordinates, with a gradual
-  // departure from its opening position and a smooth return to the red beam.
+  // Keep the opening glow in view as the red beam starts rising. The warm
+  // centre only moves upward, then eases into the introduction's exit.
   const amberStart = STATE2.y + AMBER_CENTER_OFFSET * state2Size;
-  const amberLimit = Math.max(amberStart + .11 * viewHeight, v.y1 - .16 * viewHeight);
   const copyCenter = (copyTop + copyBottom) / 2;
   const blendRange = .19 * viewHeight;
   amberPosition = scroll => {
+    const lift = lightTravel(scroll);
+    const drift = amberStart - .18 * lift;
     const copyY = copyCenter - introTravel(scroll);
-    const soften = Math.max(0, blendRange - Math.abs(copyY - amberLimit));
-    const readingY = Math.min(copyY, amberLimit) - soften * soften / (4 * blendRange);
-    const drift = lerp(amberStart, readingY, smooth(0, .36 * viewHeight, scroll));
+    const soften = Math.max(0, blendRange - Math.abs(copyY - drift));
+    const readingY = Math.min(copyY, drift) - soften * soften / (4 * blendRange);
     const release = smooth(copyExit - .12 * viewHeight, copyExit + .38 * viewHeight, scroll);
-    return lerp(drift, amberStart - lightTravel(scroll), release);
+    return lerp(readingY, amberStart - lift, release);
   };
 
   const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
