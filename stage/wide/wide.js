@@ -63,8 +63,8 @@ let gestureLockUntil = 0, wheelSeenAt = 0;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
 let titleExit = 0, scrollEnd = U_SHORE;
-let titleTravel, introTravel, lightTravel, frameTravel;
-let copyTop = 0, copyBottom = 0, copyStartOffset = 0, viewportBottom = 0, viewHeight = 0;
+let titleTravel, introTravel, lightTravel, frameTravel, amberPosition;
+let copyStartOffset = 0;
 let started = false;
 
 // ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
@@ -182,17 +182,12 @@ function render(time) {
   const copyTravel = introTravel(u);
   intro.style.transform = `translateY(${frameDistance - copyTravel + copyStartOffset}px)`;
   intro.style.opacity = e > .55 ? 1 : 0;
-  // Let the existing amber light lag the red disc while the introduction passes.
-  // Ease into the offset after the expanded light has settled.
-  const nativeAmberY = pose.y + AMBER_CENTER_OFFSET * pose.size;
-  const copyY = (copyTop + copyBottom) / 2 - copyTravel;
-  const amberLimit = Math.max(STATE2.y + AMBER_CENTER_OFFSET * state2Size + .11 * viewHeight, viewportBottom - .16 * viewHeight);
-  // Round off the handoff from the initial drift to the copy's upward motion.
-  const blendRange = .12 * viewHeight;
-  const soften = Math.max(0, blendRange - Math.abs(copyY - amberLimit));
-  const readingAmberY = Math.min(copyY, amberLimit) - soften * soften / (4 * blendRange);
-  const amberLag = Math.max(0, readingAmberY - nativeAmberY) * smooth(0, .16 * viewHeight, u);
-  expandedAmber.style.translate = amberLag > 0 ? `0 ${(amberLag / pose.size).toFixed(2)}px` : '';
+  if (phase === 'state2' && u > 0) {
+    const nativeAmberY = pose.y + AMBER_CENTER_OFFSET * pose.size;
+    expandedAmber.style.translate = `0 ${(amberPosition(u) - nativeAmberY) / pose.size}px`;
+  } else {
+    expandedAmber.style.translate = '';
+  }
   if (phase === 'state2' && u >= titleExit) return;
 
   // Map the light into the independently moving wordmark.
@@ -360,15 +355,14 @@ function resize() {
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
   light2.style.setProperty('--gk', (restSize() / state2Size).toFixed(3));
   const lightRadius = 307.5 * state2Size;
-  viewHeight = v.y1 - v.y0;
+  const viewHeight = v.y1 - v.y0;
   const titleDistance = 880 - v.y0;
   const restCopyTop = intro.offsetTop;
   // Leave a short lead-in for tall viewports where the intro would appear
   // before the warm part of the beam starts moving.
-  copyStartOffset = Math.max(0, v.y1 - restCopyTop + .055 * viewHeight);
-  copyTop = restCopyTop + copyStartOffset;
-  copyBottom = copyTop + intro.offsetHeight;
-  viewportBottom = v.y1;
+  copyStartOffset = Math.max(0, v.y1 - restCopyTop + .10 * viewHeight);
+  const copyTop = restCopyTop + copyStartOffset;
+  const copyBottom = copyTop + intro.offsetHeight;
   const copyDistance = copyBottom - v.y0;
   const reduce = reducedMotion.matches;
   titleExit = reduce ? titleDistance : titleDistance / 1.62;
@@ -393,6 +387,21 @@ function resize() {
   lightTravel = scroll => scroll <= copyExit
     ? lightApproach(scroll, copyExit, entryLift, handoffSpeed)
     : entryLift + frameTravel(scroll) - copyExit;
+
+  // Animate the existing amber ellipse in stage coordinates, with a gradual
+  // departure from its opening position and a smooth return to the red beam.
+  const amberStart = STATE2.y + AMBER_CENTER_OFFSET * state2Size;
+  const amberLimit = Math.max(amberStart + .11 * viewHeight, v.y1 - .16 * viewHeight);
+  const copyCenter = (copyTop + copyBottom) / 2;
+  const blendRange = .19 * viewHeight;
+  amberPosition = scroll => {
+    const copyY = copyCenter - introTravel(scroll);
+    const soften = Math.max(0, blendRange - Math.abs(copyY - amberLimit));
+    const readingY = Math.min(copyY, amberLimit) - soften * soften / (4 * blendRange);
+    const drift = lerp(amberStart, readingY, smooth(0, .36 * viewHeight, scroll));
+    const release = smooth(copyExit - .12 * viewHeight, copyExit + .38 * viewHeight, scroll);
+    return lerp(drift, amberStart - lightTravel(scroll), release);
+  };
 
   const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
   const curtainDelay = Math.max(0, copyExit - apertureEntry);
