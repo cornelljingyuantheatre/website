@@ -194,9 +194,8 @@
     }
     window.stageLettering = {
       hide() { canvas.hidden = true; },
-      draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1, wordmarkOpacity }) {
+      draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1 }) {
         canvas.hidden = false;
-        canvas.style.opacity = wordmarkOpacity;
         canvas.style.transform = `translate(${T.x}px,${T.y + frameDistance - titleDistance}px) scale(${T.s}) translate(${tile.x - TITLE_ORIGIN.x}px,${tile.y - TITLE_ORIGIN.y}px)`;
         reset(output.ctx);
         if (brightness <= 0) return;
