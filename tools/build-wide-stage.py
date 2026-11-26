@@ -112,8 +112,9 @@ for k, t, x, y, s, slot, sh, red in W:
     body.append(f'<use href="#word-{k}" style="fill:{red}"/>')
 body.append('</g>')
 
+# Keep the lettering dark before wide.js can position the rim mask.
 title_svg = ('<svg class="title-field" viewBox="0 0 1512 982" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>'
-             + ''.join(defs) + '</defs><g id="title-group">' + ''.join(body) + '</g></svg>')
+             + ''.join(defs) + '</defs><g id="title-group" opacity="0">' + ''.join(body) + '</g></svg>')
 
 # Light renderers. A: CSS gradient + 10 progressive blur bands + amber light.
 # Fitted against the native export (light-154-239@2x): band blur 0 -> 60.5px (pow 1.0625)
