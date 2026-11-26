@@ -59,6 +59,7 @@ let scale = 1, stageX = 0, stageY = 0, vw = 1512, vh = 982;
 let frame = 0, lastTime = 0;
 let entering = !reducedMotion.matches, entranceStart = null, entrancePlan = null;
 let aperture = entering ? .16 : 1, focusBlur = entering ? 18 : 0, brightness = entering ? 0 : 1;
+let wordmarkOpacity = entering ? 0 : 1;
 let redReveal = 0, redRevealGoal = 0, redRevealFrom = 0, redRevealStart = null, centralHasLight = true;
 const centralRedTriggerScale = .55;
 let phase = 'state1';            // state1 | grow | state2 | shrink
@@ -100,7 +101,7 @@ function createEntrancePlan() {
     const top = viewBounds().y0;
     const start = top - 307.5 * openingBeamSize * .36;
     const duration = 1.65;
-    return { vertical: true, duration, sample(sec) {
+    return { vertical: true, duration, wordmarkStart: duration * .62, sample(sec) {
       return { x: origin.x, y: lerp(start, origin.y, smooth(0, duration, sec)) };
     } };
   }
@@ -124,7 +125,10 @@ function createEntrancePlan() {
     return aimAt(pointAt(angle), fixture);
   };
   const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65), duration = orbit + landing;
-  return { duration, sample(sec) { const t = clamp(sec, 0, duration); return projectAim(t < orbit ? orbitAt(t / orbit) : landingAt((t - orbit) / landing), fixture); } };
+  return { duration, wordmarkStart: orbit + landing * .1, sample(sec) {
+    const t = clamp(sec, 0, duration);
+    return projectAim(t < orbit ? orbitAt(t / orbit) : landingAt((t - orbit) / landing), fixture);
+  } };
 }
 
 // ---------- 25c8682: position-dependent beam and red-state test ----------
@@ -206,11 +210,12 @@ function render(time) {
   content.style.transform = `translateY(${-frameDistance}px)`;
   const T = titleTransform(e);
   const titleDistance = titleTravel(u);
+  titleGroup.style.opacity = wordmarkOpacity;
   titleGroup.setAttribute('transform', `translate(${T.x} ${T.y + frameDistance - titleDistance}) scale(${T.s}) translate(${-TITLE_ORIGIN.x} ${-TITLE_ORIGIN.y})`);
   const copyTravel = introTravel(u);
   intro.style.transform = `translateY(${frameDistance - copyTravel + copyStartOffset}px)`;
   intro.style.opacity = e > .55 ? 1 : 0;
-  if (phase === 'state2' && u >= titleExit) {
+  if (wordmarkOpacity === 0 || (phase === 'state2' && u >= titleExit)) {
     window.stageLettering?.hide();
     return;
   }
@@ -229,7 +234,7 @@ function render(time) {
     lowerColorField.setAttribute('r', r);
   }
   if (window.stageLettering) {
-    window.stageLettering.draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1 });
+    window.stageLettering.draw({ T, frameDistance, titleDistance, Lloc, sizeLocal, beamBlur, e, inState1, wordmarkOpacity });
     return;
   }
   rimField.setAttribute('transform', field);
@@ -270,6 +275,7 @@ function tick(time) {
     const opening = smootherstep(clamp(elapsed / .2, 0, 1));
     aperture = entrancePlan.vertical ? lerp(.44, 1, smooth(0, entrancePlan.duration, elapsed)) : .7 + .3 * opening;
     focusBlur = 6 * (1 - opening); brightness = smootherstep(clamp(elapsed / .12, 0, 1));
+    wordmarkOpacity = smooth(entrancePlan.wordmarkStart, entrancePlan.duration, elapsed);
     if (elapsed >= entrancePlan.duration || reducedMotion.matches) finishEntrance(), Object.assign(light, origin), Object.assign(target, origin);
     busy = true;
   } else if (phase === 'state1') {
@@ -298,7 +304,7 @@ function tick(time) {
   if (busy) wake();
 }
 function wake() { if (started && !frame && !document.hidden) frame = requestAnimationFrame(tick); }
-function finishEntrance() { entering = false; aperture = brightness = 1; focusBlur = 0; }
+function finishEntrance() { entering = false; aperture = brightness = wordmarkOpacity = 1; focusBlur = 0; }
 
 // ---------- state 1 ⇄ state 2 ----------
 function startGrow() {
