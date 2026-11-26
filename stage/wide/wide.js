@@ -106,7 +106,7 @@ function createEntrancePlan() {
   }
   const fixture = { x: origin.x, y: -640, height: 900 };
   const orbitTop = Math.min(view.y0 + .31 * (view.y1 - view.y0), origin.y - 140);
-  const radius = Math.min(350, (view.y1 - orbitTop) / 2, (view.x1 - view.x0) / 3);
+  const radius = Math.min(385, (view.y1 - orbitTop) * .55, (view.x1 - view.x0) / 3);
   const orbitCenterY = orbitTop + radius;
   const pointAt = angle => ({
     x: origin.x + radius * Math.sin(angle),
@@ -133,24 +133,14 @@ function createEntrancePlan() {
   };
   const approach = boundedDuration(approachAt, 1);
   const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65);
-  const sweepStart = approach + .10;
-  const landingStart = sweepStart + orbit - landing * .55;
-  const timeline = landingStart + landing;
-  // Give the initial drop a beat before turning. Start the final landing
-  // before pan finishes its return so there is no second stop.
-  const combinedAim = q => {
-    const t = q * timeline;
-    const approachAim = approachAt(clamp(t / approach, 0, 1));
-    const sweepAim = orbitAt(clamp((t - sweepStart) / orbit, 0, 1));
-    const landingAim = landingAt(clamp((t - landingStart) / landing, 0, 1));
-    return {
-      pan: sweepAim.pan,
-      tilt: approachAim.tilt + sweepAim.tilt + landingAim.tilt - 2 * topAim.tilt,
-    };
-  };
-  const duration = Math.max(timeline, boundedDuration(combinedAim, 0));
-  return { duration, openingDuration: approach * duration / timeline, sample(sec) {
-    return projectAim(combinedAim(clamp(sec / duration, 0, 1)), fixture);
+  const hold = .10;
+  const sweepStart = approach + hold;
+  const landingStart = sweepStart + orbit + hold;
+  const duration = landingStart + landing;
+  return { duration, openingDuration: approach, sample(sec) {
+    if (sec < sweepStart) return projectAim(approachAt(clamp(sec / approach, 0, 1)), fixture);
+    if (sec < landingStart) return projectAim(orbitAt(clamp((sec - sweepStart) / orbit, 0, 1)), fixture);
+    return projectAim(landingAt(clamp((sec - landingStart) / landing, 0, 1)), fixture);
   } };
 }
 
