@@ -96,7 +96,8 @@ function sweepProgress(u) {
   return (u - acceleration / 2) / distance;
 }
 function createEntrancePlan() {
-  const aboveViewport = viewBounds().y0 - 307.5 * openingBeamSize * .36;
+  const view = viewBounds();
+  const aboveViewport = view.y0 - 307.5 * openingBeamSize * .36;
   if (compact > .5) {
     const duration = 1.65;
     return { duration, openingDuration: duration, sample(sec) {
@@ -104,10 +105,15 @@ function createEntrancePlan() {
     } };
   }
   const fixture = { x: origin.x, y: -640, height: 900 };
-  const rx = Math.min(535, Math.max(230, scene.clientWidth / (2 * scale) - 80)), ry = 350;
-  const pointAt = angle => ({ x: origin.x + rx * Math.sin(angle), y: origin.y - ry * Math.cos(angle) });
+  const rx = Math.min(535, Math.max(230, scene.clientWidth / (2 * scale) - 80));
+  const orbitTop = Math.min(view.y0 + .31 * (view.y1 - view.y0), origin.y - 140);
+  const orbitBottom = origin.y + 350;
+  const pointAt = angle => ({
+    x: origin.x + rx * Math.sin(angle),
+    y: lerp(orbitTop, orbitBottom, (1 - Math.cos(angle)) / 2),
+  });
   const topAim = aimAt(pointAt(0), fixture), endAim = aimAt(origin, fixture);
-  const startY = Math.min(aboveViewport, pointAt(0).y - 160);
+  const startY = Math.min(aboveViewport, orbitTop - 160);
   const startAim = aimAt({ x: origin.x, y: startY }, fixture);
   const approachAt = q => blendAim(startAim, topAim, smootherstep(q));
   const landingAt = q => blendAim(topAim, endAim, smootherstep(q));
@@ -127,11 +133,11 @@ function createEntrancePlan() {
   };
   const approach = boundedDuration(approachAt, 1);
   const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65);
-  const sweepStart = approach * .48;
+  const sweepStart = approach + .10;
   const landingStart = sweepStart + orbit - landing * .55;
   const timeline = landingStart + landing;
-  // Start turning before the initial tilt finishes, and begin landing before
-  // pan finishes its return. Both axes only come to rest together at the end.
+  // Give the initial drop a beat before turning. Start the final landing
+  // before pan finishes its return so there is no second stop.
   const combinedAim = q => {
     const t = q * timeline;
     const approachAim = approachAt(clamp(t / approach, 0, 1));
