@@ -74,7 +74,7 @@ let titleTravel, introTravel, lightTravel, frameTravel;
 let copyStartOffset = 0;
 let started = false;
 
-// ---------- 25c8682: moving-head entrance (unchanged path, rates and landing) ----------
+// ---------- moving-head entrance ----------
 const fixtureLimits = { panRate: 2.31, tiltRate: 2.09, panAccel: 14, tiltAccel: 12 };
 function aimAt(p, f) { const dx = p.x - f.x, dy = p.y - f.y; return { pan: Math.atan2(dx, dy), tilt: Math.atan2(Math.hypot(dx, dy), f.height) }; }
 function projectAim(a, f) { const r = f.height * Math.tan(a.tilt); return { x: f.x + r * Math.sin(a.pan), y: f.y + r * Math.cos(a.pan) }; }
@@ -96,18 +96,20 @@ function sweepProgress(u) {
   return (u - acceleration / 2) / distance;
 }
 function createEntrancePlan() {
+  const aboveViewport = viewBounds().y0 - 307.5 * openingBeamSize * .36;
   if (compact > .5) {
-    const top = viewBounds().y0;
-    const start = top - 307.5 * openingBeamSize * .36;
     const duration = 1.65;
-    return { vertical: true, duration, sample(sec) {
-      return { x: origin.x, y: lerp(start, origin.y, smooth(0, duration, sec)) };
+    return { duration, openingDuration: duration, sample(sec) {
+      return { x: origin.x, y: lerp(aboveViewport, origin.y, smooth(0, duration, sec)) };
     } };
   }
   const fixture = { x: origin.x, y: -640, height: 900 };
   const rx = Math.min(535, Math.max(230, scene.clientWidth / (2 * scale) - 80)), ry = 350;
   const pointAt = angle => ({ x: origin.x + rx * Math.sin(angle), y: origin.y - ry * Math.cos(angle) });
   const topAim = aimAt(pointAt(0), fixture), endAim = aimAt(origin, fixture);
+  const startY = Math.min(aboveViewport, pointAt(0).y - 160);
+  const startAim = aimAt({ x: origin.x, y: startY }, fixture);
+  const approachAt = q => blendAim(startAim, topAim, smootherstep(q));
   const landingAt = q => blendAim(topAim, endAim, smootherstep(q));
   const count = 1536, table = [{ angle: 0, cost: 0 }]; let last = topAim, total = 0;
   for (let i = 1; i <= count; i++) { const angle = i / count * Math.PI * 2, aim = aimAt(pointAt(angle), fixture); total += Math.hypot(aim.pan - last.pan, aim.tilt - last.tilt); table.push({ angle, cost: total }); last = aim; }
@@ -123,8 +125,14 @@ function createEntrancePlan() {
     const angle = (2 * f3 - 3 * f2 + 1) * a.angle + (-2 * f3 + 3 * f2) * b.angle + (f3 - 2 * f2 + f) * span * a.slope + (f3 - f2) * span * b.slope;
     return aimAt(pointAt(angle), fixture);
   };
-  const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65), duration = orbit + landing;
-  return { duration, sample(sec) { const t = clamp(sec, 0, duration); return projectAim(t < orbit ? orbitAt(t / orbit) : landingAt((t - orbit) / landing), fixture); } };
+  const openingDuration = boundedDuration(approachAt, 1);
+  const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65);
+  const duration = openingDuration + orbit + landing;
+  return { duration, openingDuration, sample(sec) {
+    if (sec < openingDuration) return projectAim(approachAt(sec / openingDuration), fixture);
+    const t = sec - openingDuration;
+    return projectAim(t < orbit ? orbitAt(t / orbit) : landingAt(clamp((t - orbit) / landing, 0, 1)), fixture);
+  } };
 }
 
 // ---------- 25c8682: position-dependent beam and red-state test ----------
@@ -269,7 +277,7 @@ function tick(time) {
     Object.assign(light, entrancePlan.sample(elapsed));
     // Independent cues on the shared entrance timeline (25c8682).
     const opening = smootherstep(clamp(elapsed / .2, 0, 1));
-    aperture = entrancePlan.vertical ? lerp(.44, 1, smooth(0, entrancePlan.duration, elapsed)) : .7 + .3 * opening;
+    aperture = lerp(.28, 1, smootherstep(clamp(elapsed / entrancePlan.openingDuration, 0, 1)));
     focusBlur = 6 * (1 - opening); brightness = smootherstep(clamp(elapsed / .12, 0, 1));
     if (elapsed >= entrancePlan.duration || reducedMotion.matches) finishEntrance(), Object.assign(light, origin), Object.assign(target, origin);
     busy = true;
