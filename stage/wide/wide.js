@@ -105,12 +105,12 @@ function createEntrancePlan() {
     } };
   }
   const fixture = { x: origin.x, y: -640, height: 900 };
-  const rx = Math.min(535, Math.max(230, scene.clientWidth / (2 * scale) - 80));
   const orbitTop = Math.min(view.y0 + .31 * (view.y1 - view.y0), origin.y - 140);
-  const orbitBottom = origin.y + 350;
+  const radius = Math.min(350, (view.y1 - orbitTop) / 2, (view.x1 - view.x0) / 3);
+  const orbitCenterY = orbitTop + radius;
   const pointAt = angle => ({
-    x: origin.x + rx * Math.sin(angle),
-    y: lerp(orbitTop, orbitBottom, (1 - Math.cos(angle)) / 2),
+    x: origin.x + radius * Math.sin(angle),
+    y: orbitCenterY - radius * Math.cos(angle),
   });
   const topAim = aimAt(pointAt(0), fixture), endAim = aimAt(origin, fixture);
   const startY = Math.min(aboveViewport, orbitTop - 160);
