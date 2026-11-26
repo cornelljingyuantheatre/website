@@ -100,7 +100,7 @@ function createEntrancePlan() {
   if (compact > .5) {
     const duration = 1.65;
     return { duration, openingDuration: duration, sample(sec) {
-      return { x: origin.x, y: lerp(aboveViewport, origin.y, smooth(0, duration, sec)) };
+      return { x: origin.x, y: lerp(aboveViewport, origin.y, smootherstep(clamp(sec / duration, 0, 1))) };
     } };
   }
   const fixture = { x: origin.x, y: -640, height: 900 };
@@ -125,13 +125,26 @@ function createEntrancePlan() {
     const angle = (2 * f3 - 3 * f2 + 1) * a.angle + (-2 * f3 + 3 * f2) * b.angle + (f3 - 2 * f2 + f) * span * a.slope + (f3 - f2) * span * b.slope;
     return aimAt(pointAt(angle), fixture);
   };
-  const openingDuration = boundedDuration(approachAt, 1);
+  const approach = boundedDuration(approachAt, 1);
   const orbit = boundedDuration(orbitAt, 2.6), landing = boundedDuration(landingAt, .65);
-  const duration = openingDuration + orbit + landing;
-  return { duration, openingDuration, sample(sec) {
-    if (sec < openingDuration) return projectAim(approachAt(sec / openingDuration), fixture);
-    const t = sec - openingDuration;
-    return projectAim(t < orbit ? orbitAt(t / orbit) : landingAt(clamp((t - orbit) / landing, 0, 1)), fixture);
+  const sweepStart = approach * .48;
+  const landingStart = sweepStart + orbit - landing * .55;
+  const timeline = landingStart + landing;
+  // Start turning before the initial tilt finishes, and begin landing before
+  // pan finishes its return. Both axes only come to rest together at the end.
+  const combinedAim = q => {
+    const t = q * timeline;
+    const approachAim = approachAt(clamp(t / approach, 0, 1));
+    const sweepAim = orbitAt(clamp((t - sweepStart) / orbit, 0, 1));
+    const landingAim = landingAt(clamp((t - landingStart) / landing, 0, 1));
+    return {
+      pan: sweepAim.pan,
+      tilt: approachAim.tilt + sweepAim.tilt + landingAim.tilt - 2 * topAim.tilt,
+    };
+  };
+  const duration = Math.max(timeline, boundedDuration(combinedAim, 0));
+  return { duration, openingDuration: approach * duration / timeline, sample(sec) {
+    return projectAim(combinedAim(clamp(sec / duration, 0, 1)), fixture);
   } };
 }
 
