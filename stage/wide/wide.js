@@ -180,10 +180,14 @@ function placeLight(element, transform, opacity) {
   if (opacity > 0) element.style.transform = transform;
   element.style.opacity = opacity;
 }
-function render(time) {
+function syncTouchStage() {
   const touchStage = useTouchGestures();
   document.documentElement.classList.toggle('touch-stage', touchStage);
   scene.toggleAttribute('data-swipe-only', touchStage && phase !== 'state2');
+}
+
+function render(time) {
+  syncTouchStage();
   const e = phase === 'state1' ? 0 : phase === 'state2' ? 1 : smootherstep(grow);
   const pose = currentPose();
   const beam = beamAt(light.y);
@@ -293,7 +297,7 @@ function tick(time) {
   if (redReveal !== redRevealGoal) busy = true;
   if (busy) wake();
 }
-function wake() { if (!frame && !document.hidden) frame = requestAnimationFrame(tick); }
+function wake() { if (started && !frame && !document.hidden) frame = requestAnimationFrame(tick); }
 function finishEntrance() { entering = false; aperture = brightness = 1; focusBlur = 0; }
 
 // ---------- state 1 ⇄ state 2 ----------
@@ -486,19 +490,32 @@ resize();
 // ---------- prototype switch ----------
 if (new URLSearchParams(location.search).has('record')) document.documentElement.classList.add('recording');
 
-// ---------- start once fonts are ready (dark until then) ----------
-if (entering) { entrancePlan = createEntrancePlan(); Object.assign(light, entrancePlan.sample(0)); }
-render(0);
+// Choose the renderers before the first visible frame. Layout and input may
+// wake the stage during loading, but the entrance clock runs only after start.
+syncTouchStage();
 const fontsReady = document.fonts ? Promise.all([document.fonts.load('184px AaRuiYaTi', '境缘'), document.fonts.load('600 32px "Noto Serif SC"', '台')]).catch(() => {}) : Promise.resolve();
+const letteringReady = stageTestMode === 'touch' ? Promise.resolve() : new Promise(resolve => {
+  addEventListener('stage-lettering-ready', resolve, { once: true });
+});
+let cachedLightsReady = false;
 const lightTextures = Promise.all(['open', 'expand', 'portrait'].map(async profile => {
   const image = new Image();
   image.src = `assets/light-a-${profile}.webp`;
   await image.decode();
-})).then(() => { scene.classList.add('baked-lights'); wake(); }).catch(() => {});
-Promise.race([Promise.all([fontsReady, lightTextures]), new Promise(r => setTimeout(r, 2500))])
+})).then(() => { cachedLightsReady = true; }).catch(() => {});
+let startupTimeout;
+Promise.race([
+  Promise.all([fontsReady, lightTextures, letteringReady]),
+  new Promise(resolve => { startupTimeout = setTimeout(resolve, 2500); }),
+])
   .then(() => {
+    clearTimeout(startupTimeout);
+    if (cachedLightsReady) scene.classList.add('baked-lights');
+    if (entering) {
+      entrancePlan = createEntrancePlan();
+      Object.assign(light, entrancePlan.sample(0));
+    }
     started = true;
-    entranceStart = null;
     if (window.scrollY) window.scrollTo(0, 0);
     if (pendingGrow) startGrow();
     wake();

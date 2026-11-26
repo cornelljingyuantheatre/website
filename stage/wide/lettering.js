@@ -212,10 +212,11 @@
   document.fonts.load('184px AaRuiYaTi', '境缘ChineseAtCornell')
     .then(fonts => {
       if (!fonts.length) throw new Error('The wordmark font could not be loaded.');
-      init();
+      if (!started) init();
     })
     .catch(error => {
       document.documentElement.dataset.letteringRenderer = 'svg';
       console.error(error);
-    });
+    })
+    .finally(() => dispatchEvent(new Event('stage-lettering-ready')));
 })();
