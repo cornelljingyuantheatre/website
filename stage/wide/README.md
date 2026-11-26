@@ -1,6 +1,6 @@
-# Widescreen homepage stage
+# Responsive homepage stage
 
-Opened by the homepage at ≥800px (`hero.js`). Narrow screens keep `stage/index.html` unchanged.
+The homepage loads this stage at every width. The former narrow route redirects here.
 
 The lettering uses cached AaRuiYaTi glyphs and soft shadow sprites with moving illumination. The SVG remains the fallback and draws the red wordmark. Both light poses use Claude's prototype A CSS renderer.
 
@@ -26,14 +26,14 @@ The fields are scaled by 307.5/244.5 for the larger new light.
 ## Light
 
 - Claude's CSS prototype from `b62631d` uses a red gradient circle, ten complementary blur bands and an amber ellipse.
-- Each pose uses fixed self-blur values while moving. The expanded pose sets its blur profile when the viewport is sized. The transition crossfades the two profiles at the same position and scale.
+- Each pose reuses a lossless WebP render of the CSS light. The expanded light selects the closer blur profile for its radius. The original CSS stays as the fallback, and the transition crossfades the two lights at the same position and scale.
 
 ## Sequence
 
 Touch-capable devices keep the opening light centered. Vertical swipes open state 2 from the top, then native vertical scrolling takes over. On mouse-only devices the light can follow the pointer in state 1.
 
 1. One downward gesture (wheel, swipe, ArrowDown/PageDown/Space) grows state 1 into state 2 over 1.5s (smootherstep). The light and title share the same driver.
-   - The rest of that gesture, including trackpad inertia, is absorbed.
+   - A short, same-direction wheel tail is absorbed. An intentional opposite wheel input can reverse the current transition.
 2. In state 2 the pointer is ignored.
    - The wordmark and its shadows accelerate upward first. The wider light follows on a later curve.
    - The red and amber parts rise together, keeping the original light mix as the introduction passes.
@@ -45,6 +45,13 @@ Touch-capable devices keep the opening light centered. Vertical swipes open stat
 
 - The parked state-2 light grows beyond 2418px just enough to keep every viewport corner inside 93% of its radius.
 - The Other Shore's city photograph scales to cover the viewport width.
+
+## Narrow viewports
+
+- The title fits its measured glyph bounds. In portrait, Page 1 uses up to 56% of the viewport width and 48% of its height. Page 2 uses up to 75% of the width and 58% of the height. The smaller bound wins to preserve proportions.
+- The portrait spotlight comes down vertically. The introduction uses a viewport-relative 15–23 CSS pixel font size with 1.5 line spacing.
+- The photograph aperture occupies 70% of the viewport width in portrait. The curtain overlay and aperture mask scale together. The poster uses up to 68% of the width or 81% of the height, and the scroll endpoint centers the poster composition.
+- The original desktop positions blend into the portrait positions between viewport aspect ratios 1.22 and 0.82.
 
 Regenerate `index.html` after changing glyph or field definitions:
 

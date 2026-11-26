@@ -10,7 +10,7 @@ html, body { margin: 0; background: #000; overflow-x: clip; }
 body { overscroll-behavior-y: auto; }
 .accessible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .journey { position: relative; height: 100vh; }
-.scene { position: sticky; top: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; outline: none; touch-action: pan-y; }
+.scene { position: sticky; top: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overflow: clip; outline: none; touch-action: pan-y; }
 .touch-stage, .touch-stage body { overscroll-behavior-y: none; }
 .touch-stage .scene { touch-action: pan-y pinch-zoom; }
 .touch-stage .scene[data-swipe-only] { touch-action: pan-x pinch-zoom; }
@@ -35,6 +35,12 @@ body { overscroll-behavior-y: auto; }
   filter: blur(calc(var(--s) * var(--gk) * 1px)); }
 .light-css .amber { position: absolute; left: 293.538px; top: 229.85px; width: 245.124px; height: 331.457px; border-radius: 50%;
   background: #ffb431; opacity: .9375; filter: blur(106.25px); transform: rotate(132.732deg); }
+.baked-lights .light-css > * { display: none; }
+.baked-lights .light-css::before { content: ''; position: absolute; left: -300px; top: -300px;
+  width: 1416px; height: 1458px; background: var(--light-texture) no-repeat; }
+.light1-css { --light-texture: url('assets/light-a-open.webp'); }
+.light2-css { --light-texture: url('assets/light-a-expand.webp'); }
+.light2-css[data-profile="portrait"] { --light-texture: url('assets/light-a-portrait.webp'); }
 
 /* ---------- composition ---------- */
 .stage { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; pointer-events: none; }
@@ -42,11 +48,12 @@ body { overscroll-behavior-y: auto; }
 .title-field { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; overflow: visible; }
 .title-word { font-family: AaRuiYaTi, serif; }  /* no own fill: <use> instances colour it; alpha masks ignore colour */
 .intro { position: absolute; left: 43px; top: 1010px; width: 1427px; margin: 0; text-align: center; color: #3e140e;
-  font: 600 32px/46px 'Noto Serif SC', serif; opacity: 0; }
+  font: 600 var(--copy-size, 32px)/var(--copy-leading, 46px) 'Noto Serif SC', serif; opacity: 0; }
 .intro span { display: block; }
 /* Curtain: photo inside the aperture (alpha mask 206:66), exterior-only glow overlay above it.
    The overlay's interior is fully transparent, so the photo receives no glow or blur. */
-.curtain { position: absolute; left: 108px; top: calc(1689px + var(--curtain-delay, 0px)); width: 1296.44px; height: 842px; opacity: 0; }
+.curtain { position: absolute; left: 108px; top: calc(1689px + var(--curtain-delay, 0px)); width: 1296.44px; height: 842px; opacity: 0;
+  transform: scale(var(--curtain-scale, 1)); transform-origin: center top; }
 .curtain-photo { position: absolute; left: 210.928px; top: 105.464px; width: 836.929px; height: 630.158px;
   -webkit-mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat;
   mask: url('assets/curtain-aperture-mask.svg') 51.447px 46.302px / 748.54px 570.193px no-repeat; }
@@ -54,7 +61,8 @@ body { overscroll-behavior-y: auto; }
 .curtain-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
 
 /* ---------- 对岸 The Other Shore (frame 192:168), placed directly under frame 2 ---------- */
-.shore { position: absolute; left: 0; top: calc(2830px + var(--curtain-delay, 0px)); width: 1512px; height: 982px; background: #000; clip-path: inset(0 -4000px); pointer-events: auto; }
+.shore { position: absolute; left: 0; top: calc(2830px + var(--curtain-delay, 0px)); width: 1512px; height: 982px; background: #000; clip-path: inset(0 -4000px); pointer-events: auto;
+  transform: scale(var(--shore-scale, 1)); transform-origin: center top; }
 /* Soft entry from the dark curtain section instead of a hard photo edge. */
 .shore::before { content: ''; position: absolute; left: -4000px; right: -4000px; top: 0; height: 220px; z-index: 1; background: linear-gradient(#000, rgb(0 0 0 / 0)); pointer-events: none; }
 .shore-city { position: absolute; left: 0; top: 0; width: 1821.294px; height: 3236.135px; transform-origin: 0 0;

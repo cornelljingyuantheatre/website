@@ -1,10 +1,10 @@
-// Widescreen homepage stage. State 1 (Figma 154:238) keeps the interaction model of
+// Responsive homepage stage. State 1 (Figma 154:238) keeps the interaction model of
 // stage/app.js at 25c8682: clockwise moving-head entrance, pointer-follow, beamAt(y)
 // size/brightness/defocus, independent entrance cues, moving illumination mask, rim reveal
 // and the whole-wordmark red state. One scroll gesture grows the scene into state 2
 // (191:34); further scrolling staggers the wordmark, light and introduction, then
 // brings in the curtain photograph and The Other Shore (192:168).
-// Both poses use Claude's CSS light with fixed blur profiles.
+// Both poses reuse rendered copies of Claude's CSS light.
 const $ = s => document.querySelector(s);
 const scene = $('.scene'), journey = $('.journey'), stageEl = $('.stage'), content = $('.content');
 const light1 = $('.light1-css'), light2 = $('.light2-css');
@@ -40,10 +40,14 @@ const FIGMA_BLUR_TO_SIGMA = 1 / 2.37;            // layer-blur radius → Gaussi
 const U_SHORE = 2830;                           // The Other Shore follows the curtain scene.
 const SCROLL_RESPONSE_MS = 95;
 const RIM_OPACITY = .38;
-const CURTAIN_APERTURE_TOP = 1841;
-const GROW_MS = 1500, GESTURE_GAP = 260;
+const CURTAIN_TOP = 1689, APERTURE_Y = 152, APERTURE_WIDTH = 748.54;
+const GROW_MS = 1500, WHEEL_TAIL_MS = 125;
 
 const slots = [...document.querySelectorAll('.glyph-slot')].map(r => ({ x: +r.getAttribute('x'), y: +r.getAttribute('y'), width: +r.getAttribute('width'), height: +r.getAttribute('height') }));
+const glyphBounds = {
+  left: Math.min(...slots.map(glyph => glyph.x)), right: Math.max(...slots.map(glyph => glyph.x + glyph.width)),
+  top: Math.min(...slots.map(glyph => glyph.y)), bottom: Math.max(...slots.map(glyph => glyph.y + glyph.height)),
+};
 const wordShadows = [...document.querySelectorAll('.word-shadow')].map((el, i) => {
   const s = slots[i], big = s.height > 100;
   return { el, sd: document.querySelector(`#shadow-blur-${el.dataset.word} feGaussianBlur`), cx: s.x + s.width / 2, cy: s.y + s.height / 2, height: big ? 80 : 46, last: '' };
@@ -59,10 +63,12 @@ let redReveal = 0, redRevealGoal = 0, redRevealFrom = 0, redRevealStart = null, 
 const centralRedTriggerScale = .55;
 let phase = 'state1';            // state1 | grow | state2 | shrink
 let grow = 0;                    // eased-progress driver 0..1 (state1 → state2)
-let anim = null;                 // { from, to, start, src }
-let gestureLockUntil = 0, wheelSeenAt = 0;
+let anim = null;
+let wheelDirection = 0, wheelAt = -Infinity, wheelMagnitude = 0, settledAt = -Infinity;
+let pendingGrow = false;
 let u = 0, scrollTarget = 0;     // Rendered and native scroll, in design pixels.
 let state2Size = STATE2.size;    // ≥ Figma's 2418px; grows on wider viewports so the light fills it
+let openingBeamSize = 1, compact = 0, openingTitle, expandedTitle;
 let titleExit = 0, scrollEnd = U_SHORE;
 let titleTravel, introTravel, lightTravel, frameTravel;
 let copyStartOffset = 0;
@@ -90,6 +96,14 @@ function sweepProgress(u) {
   return (u - acceleration / 2) / distance;
 }
 function createEntrancePlan() {
+  if (compact > .5) {
+    const top = viewBounds().y0;
+    const start = top - 307.5 * openingBeamSize * .36;
+    const duration = 1.65;
+    return { vertical: true, duration, sample(sec) {
+      return { x: origin.x, y: lerp(start, origin.y, smooth(0, duration, sec)) };
+    } };
+  }
   const fixture = { x: origin.x, y: -640, height: 900 };
   const rx = Math.min(535, Math.max(230, scene.clientWidth / (2 * scale) - 80)), ry = 350;
   const pointAt = angle => ({ x: origin.x + rx * Math.sin(angle), y: origin.y - ry * Math.cos(angle) });
@@ -117,7 +131,7 @@ function createEntrancePlan() {
 function beamAt(y) {
   const throwRatio = (500 + clamp(y, 0, 982)) / (500 + origin.y);
   const belowFocus = clamp((y - origin.y) / (982 - origin.y), 0, 1);
-  return { size: throwRatio ** 1.1, blur: 22 * belowFocus ** 1.6, intensity: Math.min(1, throwRatio ** -.28) };
+  return { size: openingBeamSize * throwRatio ** 1.1, blur: 22 * belowFocus ** 1.6, intensity: Math.min(1, throwRatio ** -.28) };
 }
 function updateCentralRedState(time, L, sizeLocal) {
   const beam = beamAt(light.y);
@@ -151,7 +165,13 @@ function currentPose() {
   const e = smootherstep(grow);
   return lerpPose(anim.src, { ...STATE2, size: state2Size }, e);
 }
-function titleTransform(e) { return { x: lerp(TITLE_ORIGIN.x, TITLE2.x, e), y: lerp(TITLE_ORIGIN.y, TITLE2.y, e), s: lerp(1, TITLE2.s, e) }; }
+function titleTransform(e) {
+  return {
+    x: lerp(openingTitle.x, expandedTitle.x, e),
+    y: lerp(openingTitle.y, expandedTitle.y, e),
+    s: lerp(openingTitle.s, expandedTitle.s, e),
+  };
+}
 
 // ---------- render ----------
 let parkedShadows = false;
@@ -244,7 +264,8 @@ function tick(time) {
     Object.assign(light, entrancePlan.sample(elapsed));
     // Independent cues on the shared entrance timeline (25c8682).
     const opening = smootherstep(clamp(elapsed / .2, 0, 1));
-    aperture = .7 + .3 * opening; focusBlur = 6 * (1 - opening); brightness = smootherstep(clamp(elapsed / .12, 0, 1));
+    aperture = entrancePlan.vertical ? lerp(.44, 1, smooth(0, entrancePlan.duration, elapsed)) : .7 + .3 * opening;
+    focusBlur = 6 * (1 - opening); brightness = smootherstep(clamp(elapsed / .12, 0, 1));
     if (elapsed >= entrancePlan.duration || reducedMotion.matches) finishEntrance(), Object.assign(light, origin), Object.assign(target, origin);
     busy = true;
   } else if (phase === 'state1') {
@@ -256,8 +277,10 @@ function tick(time) {
     const p = reducedMotion.matches ? 1 : clamp((time - anim.start) / GROW_MS, 0, 1);
     grow = anim.to === 'state2' ? p : 1 - p;
     if (p >= 1) {
-      phase = anim.to; anim.to === 'state1' && (Object.assign(light, origin), Object.assign(target, origin), aperture = 1);
-      if (anim.to === 'state1') anim = null; else anim = { ...anim, done: true };
+      phase = anim.to;
+      if (phase === 'state1') { Object.assign(light, origin); Object.assign(target, origin); aperture = 1; }
+      anim = null;
+      settledAt = time;
     } else busy = true;
   }
   if (phase === 'state2') {
@@ -275,7 +298,8 @@ function finishEntrance() { entering = false; aperture = brightness = 1; focusBl
 
 // ---------- state 1 ⇄ state 2 ----------
 function startGrow() {
-  if (phase !== 'state1' || !started) return;
+  if (phase !== 'state1') return;
+  if (!started) { pendingGrow = true; return; }
   finishEntrance();
   anim = { to: 'state2', start: performance.now(), src: state1Pose() };
   phase = 'grow'; u = scrollTarget = 0; window.scrollTo(0, 0); wake();
@@ -286,15 +310,32 @@ function startShrink() {
   anim = { to: 'state1', start: performance.now(), src: { ...origin, size: restSize() } };
   phase = 'shrink'; u = scrollTarget = 0; wake();
 }
-function gestureLocked(now) { return phase === 'grow' || phase === 'shrink' || now < gestureLockUntil; }
 addEventListener('wheel', ev => {
+  if (ev.ctrlKey || !ev.deltaY || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;
   const now = performance.now();
-  if (gestureLocked(now)) { ev.preventDefault(); gestureLockUntil = Math.max(gestureLockUntil, now + GESTURE_GAP); return; }
-  if (phase === 'state1') {
-    if (ev.deltaY > 0) { ev.preventDefault(); startGrow(); gestureLockUntil = now + GESTURE_GAP; }
+  const direction = Math.sign(ev.deltaY);
+  const magnitude = Math.abs(ev.deltaY) * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? vh : 1);
+  const tail = direction === wheelDirection && now - wheelAt < WHEEL_TAIL_MS && magnitude <= wheelMagnitude;
+  const changedDirection = direction !== wheelDirection;
+  wheelDirection = direction; wheelAt = now; wheelMagnitude = magnitude;
+  if (anim) {
+    ev.preventDefault();
+    const towardPage2 = direction > 0;
+    if (changedDirection && magnitude >= 16 && towardPage2 !== (phase === 'grow')) {
+      // Reverse from the current rendered progress, without jumping to an endpoint.
+      phase = towardPage2 ? 'grow' : 'shrink';
+      anim.to = towardPage2 ? 'state2' : 'state1';
+      anim.start = now - (towardPage2 ? grow : 1 - grow) * GROW_MS;
+      wake();
+    }
     return;
   }
-  if (phase === 'state2' && window.scrollY <= 0 && ev.deltaY < 0) { ev.preventDefault(); startShrink(); gestureLockUntil = now + GESTURE_GAP; }
+  if (tail && now - settledAt < 220) { ev.preventDefault(); return; }
+  if (phase === 'state1') {
+    if (direction > 0) { ev.preventDefault(); startGrow(); }
+    return;
+  }
+  if (phase === 'state2' && window.scrollY <= 1 && direction < 0) { ev.preventDefault(); startShrink(); }
 }, { passive: false });
 let swipe = null;
 scene.addEventListener('touchstart', event => {
@@ -355,20 +396,47 @@ function acceleratingTravel(speed, start, end, distance) {
   };
 }
 
+function fitPortraitTitle(base, widthShare, heightShare, centerShare) {
+  const glyphWidth = glyphBounds.right - glyphBounds.left;
+  const glyphHeight = glyphBounds.bottom - glyphBounds.top;
+  const s = Math.min(widthShare * vw / glyphWidth, heightShare * vh / glyphHeight) / scale;
+  const cx = (glyphBounds.left + glyphBounds.right) / 2 - TITLE_ORIGIN.x;
+  const cy = (glyphBounds.top + glyphBounds.bottom) / 2 - TITLE_ORIGIN.y;
+  return {
+    x: lerp(base.x, (vw / 2 - stageX) / scale - cx * s, compact),
+    y: lerp(base.y, (vh * centerShare - stageY) / scale - cy * s, compact),
+    s: lerp(base.s, s, compact),
+  };
+}
+
 function resize() {
-  vw = scene.clientWidth; vh = scene.clientHeight;
+  vw = scene.clientWidth || 1512; vh = scene.clientHeight || 982;
   scale = Math.min(vw / 1512, vh / 982);
   stageX = (vw - 1512 * scale) / 2; stageY = (vh - 982 * scale) / 2;
+  compact = smooth(1.22, .82, vw / vh);
   stageEl.style.transform = `translate(${stageX}px, ${stageY}px) scale(${scale})`;
+  openingTitle = fitPortraitTitle({ ...TITLE_ORIGIN, s: 1 }, .56, .48, .48);
+  expandedTitle = fitPortraitTitle(TITLE2, .75, .58, .42);
+  openingBeamSize = lerp(1, Math.min(vw * .94, vh * .82) / (615 * scale), compact);
+  const copySize = clamp(.042 * vw, 15, 23) / scale;
+  content.style.setProperty('--copy-size', `${lerp(32, copySize, compact)}px`);
+  content.style.setProperty('--copy-leading', `${lerp(46, copySize * 1.5, compact)}px`);
+  const curtainSize = lerp(1, .70 * vw / (APERTURE_WIDTH * scale), compact);
+  curtain.style.setProperty('--curtain-scale', curtainSize);
+  const posterSize = lerp(1, Math.min(.68 * vw / 260, .81 * vh / 560) / scale, compact);
+  shore.style.setProperty('--shore-scale', posterSize);
   // Let The Other Shore's photograph cover wider desktop ratios.
   shore.style.setProperty('--city-scale', Math.max(1, (vw / scale) / 1640).toFixed(3));
   // Parked light must cover every viewport corner (keep them inside 93% of the radius).
   const v = viewBounds(), far = Math.max(...[[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]].map(([x, y]) => Math.hypot(x - STATE2.x, y - STATE2.y)));
   state2Size = Math.max(STATE2.size, far / .93 / 307.5);
-  light2.style.setProperty('--gk', (restSize() / state2Size).toFixed(3));
+  const blurRatio = 1 / state2Size;
+  light2.style.setProperty('--gk', blurRatio.toFixed(3));
+  light2.dataset.profile = blurRatio < .20 ? 'portrait' : 'wide';
   const lightRadius = 307.5 * state2Size;
   const viewHeight = v.y1 - v.y0;
-  const titleDistance = 880 - v.y0;
+  const portraitTitleBottom = expandedTitle.y + (glyphBounds.bottom + 60 - TITLE_ORIGIN.y) * expandedTitle.s;
+  const titleDistance = lerp(880, portraitTitleBottom, compact) - v.y0;
   const restCopyTop = intro.offsetTop;
   // Leave a short lead-in for tall viewports where the intro would appear
   // before the warm part of the beam starts moving.
@@ -401,10 +469,11 @@ function resize() {
     ? entryLift * (scroll / copyExit) ** liftPower
     : entryLift + frameTravel(scroll) - copyExit;
 
-  const apertureEntry = CURTAIN_APERTURE_TOP - v.y1;
+  const apertureEntry = CURTAIN_TOP + APERTURE_Y * curtainSize - v.y1;
   const curtainDelay = Math.max(0, copyExit - apertureEntry);
   content.style.setProperty('--curtain-delay', `${curtainDelay}px`);
-  scrollEnd = U_SHORE + curtainDelay - frameGain;
+  const posterOffset = compact * (484 * posterSize - (v.y0 + v.y1) / 2);
+  scrollEnd = U_SHORE + curtainDelay - frameGain + posterOffset;
   journey.style.height = `${vh + scrollEnd * scale}px`;
   if (phase === 'state2') u = scrollTarget = clamp(window.scrollY / scale, 0, scrollEnd);
   wake();
@@ -421,7 +490,18 @@ if (new URLSearchParams(location.search).has('record')) document.documentElement
 if (entering) { entrancePlan = createEntrancePlan(); Object.assign(light, entrancePlan.sample(0)); }
 render(0);
 const fontsReady = document.fonts ? Promise.all([document.fonts.load('184px AaRuiYaTi', '境缘'), document.fonts.load('600 32px "Noto Serif SC"', '台')]).catch(() => {}) : Promise.resolve();
-Promise.race([fontsReady, new Promise(r => setTimeout(r, 2500))])
-  .then(() => { started = true; entranceStart = null; if (window.scrollY) window.scrollTo(0, 0); wake(); });
+const lightTextures = Promise.all(['open', 'expand', 'portrait'].map(async profile => {
+  const image = new Image();
+  image.src = `assets/light-a-${profile}.webp`;
+  await image.decode();
+})).then(() => { scene.classList.add('baked-lights'); wake(); }).catch(() => {});
+Promise.race([Promise.all([fontsReady, lightTextures]), new Promise(r => setTimeout(r, 2500))])
+  .then(() => {
+    started = true;
+    entranceStart = null;
+    if (window.scrollY) window.scrollTo(0, 0);
+    if (pendingGrow) startGrow();
+    wake();
+  });
 // Test hook (used by the comparison recorder; harmless otherwise).
 window.__stage = { get phase() { return phase; }, get u() { return u; }, get redReveal() { return redReveal; }, get light() { return { ...light }; }, get entering() { return entering; } };

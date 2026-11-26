@@ -6,6 +6,11 @@
   const shadowPadding = 44;
   const shadowSoftness = 1;
   const tile = { x: 413, y: 105, width: 708, height: 708 };
+  const glyphTile = {
+    x: Math.floor(glyphBounds.left - 28), y: Math.floor(glyphBounds.top - 28),
+    width: Math.ceil(glyphBounds.right - glyphBounds.left) + 57,
+    height: Math.ceil(glyphBounds.bottom - glyphBounds.top) + 57,
+  };
   const center = 344.5;
 
   function surface(width, height, scale = density) {
@@ -70,7 +75,8 @@
   function init() {
     const output = surface(tile.width, tile.height);
     const buffer = surface(tile.width, tile.height);
-    const mask = surface(tile.width, tile.height);
+    const glyphBuffer = surface(glyphTile.width, glyphTile.height);
+    const mask = surface(glyphTile.width, glyphTile.height);
     const rim = field(383, 'rim-reveal-ramp', '255,43,0');
     const ink = field(270, 'lettering-ink', null, 'lettering-reveal-ramp');
     const litArea = shadowField();
@@ -81,7 +87,7 @@
       const y = Number(source.getAttribute('y'));
       const font = `${source.getAttribute('font-size')}px AaRuiYaTi`;
       mask.ctx.font = font;
-      mask.ctx.fillText(text, x - tile.x, y - tile.y);
+      mask.ctx.fillText(text, x - glyphTile.x, y - glyphTile.y);
       const box = mask.ctx.measureText(text);
       const left = Math.floor(x - box.actualBoundingBoxLeft) - shadowPadding;
       const top = Math.floor(y - box.actualBoundingBoxAscent) - shadowPadding;
@@ -108,12 +114,12 @@
       return { ...word, left, top, width, spriteHeight: height, blurred };
     });
 
-    function reset(ctx) {
+    function reset(ctx, bounds = tile) {
       ctx.setTransform(density, 0, 0, density, 0, 0);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.clearRect(0, 0, tile.width, tile.height);
-      ctx.translate(-tile.x, -tile.y);
+      ctx.clearRect(0, 0, bounds.width, bounds.height);
+      ctx.translate(-bounds.x, -bounds.y);
     }
 
     function place(ctx, picture, point, scale) {
@@ -121,18 +127,19 @@
       ctx.drawImage(picture.canvas, point.x - r, point.y - r, r * 2, r * 2);
     }
 
-    function copyBuffer(alpha) {
+    function composite(source, bounds, alpha) {
       const ctx = output.ctx;
       ctx.globalAlpha = alpha;
-      ctx.drawImage(buffer.canvas, tile.x, tile.y, tile.width, tile.height);
+      ctx.drawImage(source.canvas, bounds.x, bounds.y, bounds.width, bounds.height);
     }
 
     function paintGlyphs(picture, point, scale, alpha) {
-      reset(buffer.ctx);
-      place(buffer.ctx, picture, point, scale);
-      buffer.ctx.globalCompositeOperation = 'destination-in';
-      buffer.ctx.drawImage(mask.canvas, tile.x, tile.y, tile.width, tile.height);
-      copyBuffer(alpha);
+      const { ctx } = glyphBuffer;
+      reset(ctx, glyphTile);
+      place(ctx, picture, point, scale);
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(mask.canvas, glyphTile.x, glyphTile.y, glyphTile.width, glyphTile.height);
+      composite(glyphBuffer, glyphTile, alpha);
     }
 
     function paintShadows(point, sizeLocal, beamBlur, e, inState1) {
@@ -170,7 +177,7 @@
       ctx.restore();
       ctx.globalCompositeOperation = 'destination-in';
       place(ctx, litArea, point, sizeLocal * (1 + beamBlur * .75 / 460));
-      copyBuffer(.5 * brightness);
+      composite(buffer, tile, .5 * brightness);
     }
 
     const canvas = output.canvas;
